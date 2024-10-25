@@ -3,7 +3,7 @@ from SerialWombatPin import SerialWombatPin
 #from SerialWombat import SW_LE32
 #from enum import IntEnum
 import time
-
+import SW18B_UnitTest_globals
 #include <stdint.h>
 #include "SerialWombat.h"
 
@@ -48,12 +48,12 @@ class SerialWombatSimulatedQuadEnc:
 		self.sw0 = serialWombat0
 		self.sw1 = serialWombat1
 
-		self.millisStart = time.ticks_ms()
+		self.millisStart = SW18B_UnitTest_globals.ticks_ms()
 		self.initialize()
 
 
 	def millis(self):
-		return(int(time.ticks_ms() - self.millisStart))
+		return(int(SW18B_UnitTest_globals.ticks_ms() - self.millisStart))
 	def bothPinsHigh(self):
 		self.pin0High()
 		self.pin1High()

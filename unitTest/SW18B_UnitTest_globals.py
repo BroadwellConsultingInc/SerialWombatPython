@@ -1,8 +1,24 @@
-import machine
-import SerialWombat_mp_i2c
+import sys
+
+def is_micropython():
+    return sys.implementation.name == 'micropython'
+
+if (is_micropython()):
+    import machine
+    import SerialWombat_mp_i2c
+else:
+    import SerialWombat_smbus2_i2c
+
 import SerialWombatPulseTimer
 import time
 
+
+def ticks_ms():
+    if (is_micropython()):
+        return time.ticks_ms()
+    else:
+        return time.monotonic_ns() / 1000000
+    
 global SW18B_0_MATCH_PIN
 SW18B_0_MATCH_PIN = 3
 
@@ -90,32 +106,34 @@ SWMatchPin = [ SW18B_0_MATCH_PIN ,#0
 
 def init():
     global i2c
-    i2c = machine.I2C(0,
-                  scl=machine.Pin(1),
-                  sda=machine.Pin(0),
-                  freq=100000,timeout = 50000)
+#    i2c = machine.I2C(0,
+#                  scl=machine.Pin(1),
+#                  sda=machine.Pin(0),
+#                  freq=100000,timeout = 50000)
+    from smbus2 import SMBus
+    i2c = SMBus(1)
 
     global NUM_TEST_PINS
     NUM_TEST_PINS = 20
 
     global SW6B 
-    SW6B = SerialWombat_mp_i2c.SerialWombatChip_mp_i2c(i2c,0x6B)
+    SW6B = SerialWombat_smbus2_i2c.SerialWombatChip_smbus2_i2c(i2c,0x6B)
     SW6B.address = 0x6B
 
     global SW6C
-    SW6C = SerialWombat_mp_i2c.SerialWombatChip_mp_i2c(i2c,0x6C)
+    SW6C = SerialWombat_smbus2_i2c.SerialWombatChip_smbus2_i2c(i2c,0x6C)
     SW6C.address = 0x6C
 
     global SW6D
-    SW6D = SerialWombat_mp_i2c.SerialWombatChip_mp_i2c(i2c,0x6D)
+    SW6D = SerialWombat_smbus2_i2c.SerialWombatChip_smbus2_i2c(i2c,0x6D)
     SW6D.address = 0x6D
     
     global SW6E
-    SW6E = SerialWombat_mp_i2c.SerialWombatChip_mp_i2c(i2c,0x6E)
+    SW6E = SerialWombat_smbus2_i2c.SerialWombatChip_smbus2_i2c(i2c,0x6E)
     SW6E.address = 0x6E
 
     global SW6F
-    SW6F = SerialWombat_mp_i2c.SerialWombatChip_mp_i2c(i2c,0x6F)
+    SW6F = SerialWombat_smbus2_i2c.SerialWombatChip_smbus2_i2c(i2c,0x6F)
     SW6F.address = 0x6F
 
     global SWMatch
@@ -309,9 +327,9 @@ def test_pinCanBeOutput(pin):
     return (SWMatch[pin] != None)
   return (False)
 
-millisStart = time.ticks_ms()
+millisStart =  (time.monotonic_ns() / 1000000)
 def millis():
-    return(int((time.ticks_ms() - millisStart)))
+    return(int(((time.monotonic_ns() / 1000000) - millisStart)))
 
 def delay(delayMs):
     startTime = millis()

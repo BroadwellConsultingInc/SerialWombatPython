@@ -1,10 +1,15 @@
 import SW18B_UnitTest_globals
 import SerialWombatAnalogInput
 import time
-import machine
+
 import SW18B_UnitTest_globals
 import SerialWombatResistanceInput
 from ArduinoFunctions import delay
+
+if (SW18B_UnitTest_globals.is_micropython()):
+    import machine
+else:
+    from smbus2 import SMBus, i2c_msg
 
 class MCP4728:
     def begin(self):
@@ -21,7 +26,12 @@ class MCP4728:
         c16 |= (new_gain << 12)
         cmd[1] = (c16 >> 8)
         cmd[2] = (c16 & 0xFF)
-        SW18B_UnitTest_globals.i2c.writeto(0x60,cmd)
+        if (SW18B_UnitTest_globals.is_micropython()):
+            SW18B_UnitTest_globals.i2c.writeto(0x60,cmd)
+        else:
+            msg = i2c_msg.write(0x60,cmd)
+            SW18B_UnitTest_globals.i2c.i2c_rdwr(msg)
+            
         
         
 

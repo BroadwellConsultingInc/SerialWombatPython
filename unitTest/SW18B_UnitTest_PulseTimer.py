@@ -2,8 +2,12 @@ import SW18B_UnitTest_globals
 import SerialWombatPulseTimer
 import SerialWombatPWM
 import time
-import machine
+import sys
 import SW18B_UnitTest_globals
+
+if (SW18B_UnitTest_globals.is_micropython()):
+    import machine
+
 from ArduinoFunctions import delay
 from ArduinoFunctions import millis
 

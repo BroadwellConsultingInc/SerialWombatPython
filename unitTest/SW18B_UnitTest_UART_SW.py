@@ -68,6 +68,7 @@ def uartSWTest():
             txcount0 = txcount0 % 32
             for i in range(txcount0):
                 rval, txSeed = SW18B_UnitTest_globals.wrandom(txSeed)
+                rval = rval & 0xFF
                 uartTx0.append(rval)
 
            
@@ -80,14 +81,14 @@ def uartSWTest():
 
             for i in range(txcount1):
                 rval, txSeed = SW18B_UnitTest_globals.wrandom(txSeed)
-                uartTx1.append(rval)
+                uartTx1.append(rval & 0xFF)
             UART1Match.write(uartTx1, txcount1)
             
             txcount2, countSeed = SW18B_UnitTest_globals.wrandom(countSeed)
             txcount2 = txcount2 % 32;
             for i in range(txcount2):
                 rval,txSeed = SW18B_UnitTest_globals.wrandom(txSeed)
-                uartTx2.append(rval)
+                uartTx2.append(rval& 0xFF)
             sw18UART2.write(uartTx2, txcount2)
 
             txcount3,countSeed = SW18B_UnitTest_globals.wrandom(countSeed) 
@@ -95,7 +96,7 @@ def uartSWTest():
 
             for  i in range(txcount3):
                 rval, txSeed = SW18B_UnitTest_globals.wrandom(txSeed) 
-                uartTx3.append(rval)
+                uartTx3.append(rval & 0xFF)
 
             UART2Match.write(uartTx3, txcount3)
 

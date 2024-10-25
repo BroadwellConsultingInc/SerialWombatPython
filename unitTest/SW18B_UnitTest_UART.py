@@ -53,7 +53,7 @@ def uartHWTest():
             txcount = txcount % 32
             for i in range(txcount):
                 rval, txSeed = SW18B_UnitTest_globals.wrandom(txSeed)
-                uartTx[i] = rval
+                uartTx[i] = rval & 0xFF
 
            
             sw18UART1.write(uartTx, txcount)
@@ -78,7 +78,7 @@ def uartHWTest():
 
             for i in range(txcount):
                 rval, txSeed = SW18B_UnitTest_globals.wrandom(txSeed)
-                uartTx[i] = rval
+                uartTx[i] = rval  & 0xFF
             UART1Match.write(uartTx, txcount)
             delay(delayMs * txcount)
             uartRx = sw18UART1.readBytes( txcount)
@@ -98,7 +98,7 @@ def uartHWTest():
 
             for i in range(txcount):
                 rval,txSeed = SW18B_UnitTest_globals.wrandom(txSeed)
-                uartTx[i] = rval
+                uartTx[i] = rval  & 0xFF
             sw18UART2.write(uartTx, txcount)
             delay(delayMs * txcount)
             uartRx = UART2Match.readBytes( txcount)
@@ -117,7 +117,7 @@ def uartHWTest():
 
             for  i in range(txcount):
                 rval, txSeed = SW18B_UnitTest_globals.wrandom(txSeed) 
-                uartTx[i] = rval
+                uartTx[i] = rval  & 0xFF
 
             UART2Match.write(uartTx, txcount)
            
