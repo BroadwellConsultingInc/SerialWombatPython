@@ -176,7 +176,7 @@ class SerialWombatPWM_18AB(SerialWombatPWM, SerialWombatAbstractScaledOutput):
     @param frequency_Hz  Frequency in Hz.  Note that actual frequency may vary based on hardware capabilities of the pin.
     """
     def writeFrequency_Hz(self,frequency_Hz):
-        tx= [ 220,self._pin,self._pinMode]+SW_LE32(1000000 / frequency_Hz)+[0x55 ]
+        tx= bytearray([ 220,self._pin,self._pinMode])+SW_LE32(1000000 // frequency_Hz)+bytearray([0x55 ])
         self._sw.sendPacket(tx)
 
 

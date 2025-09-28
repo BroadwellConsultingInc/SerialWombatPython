@@ -1,5 +1,5 @@
 """
-Copyright 2020-2023 Broadwell Consulting Inc.
+Copyright 2020-2025 Broadwell Consulting Inc.
 
 "Serial Wombat" is a registered trademark of Broadwell Consulting Inc. in
 the United States.  See SerialWombat.com for usage guidance.
@@ -121,7 +121,7 @@ class SerialWombatAnalogInput(SerialWombatPin.SerialWombatPin):
 	"""
 	def readVoltage_mV(self):
 		reading = self._sw.readPublicData(self._pin)
-		x = reading * self._sw.self._supplyVoltagemV
+		x = reading * self._sw._supplyVoltagemV
 		returnval = x >> 16
 		return (returnval)
 
@@ -155,7 +155,7 @@ class SerialWombatAnalogInput(SerialWombatPin.SerialWombatPin):
 	"""
 	def readFiltered_mV(self) :
 		x = self.readFilteredCounts() # Counts ranging from 0 to 65535
-		x *= self._sw.self._supplyVoltagemV
+		x *= self._sw._supplyVoltagemV
 		return (x >> 16)
 
 
@@ -185,7 +185,7 @@ class SerialWombatAnalogInput(SerialWombatPin.SerialWombatPin):
 	"""
 	def readAveraged_mV(self):
 		x = self.readAveragedCounts() # Counts ranging from 0 to 65535
-		x *= self._sw.self._supplyVoltagemV
+		x *= self._sw._supplyVoltagemV
 		return (x >> 16)
 
 
@@ -258,7 +258,7 @@ class SerialWombatAnalogInput(SerialWombatPin.SerialWombatPin):
 	"""
 	def readMinimum_mV(self, resetAfterRead = False):
 		x = self.readMaximumCounts(resetAfterRead) # Counts ranging from 0 to 65535
-		x *= self._sw.self._supplyVoltagemV
+		x *= self._sw._supplyVoltagemV
 		return (x >> 16)
 
 
