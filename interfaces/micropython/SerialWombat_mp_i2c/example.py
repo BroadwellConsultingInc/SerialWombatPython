@@ -2,7 +2,7 @@ import SerialWombat
 from ArduinoFunctions import delay, delayMicroseconds, millis
 
 
-SW_ADDRESS = 0x6B  #Change the address to match your configuration
+SW_ADDRESS = putYourSerialWombatAddressHere  #Change the address to match your configuration
 
 import SerialWombat_interface
 sw = SerialWombat_interface.SerialWombatChipInstance(SW_ADDRESS)  
@@ -26,8 +26,8 @@ def setup():
     # Read chip information
     sw.queryVersion()
 
-    print(f"Model:            {sw.model.decode('ascii')}")
-    print(f"Firmware Version: {sw.fwVersion.decode('ascii')}")
+    print(f"Model:            {bytes(sw.model).decode('ascii')}")
+    print(f"Firmware Version: {bytes(sw.fwVersion).decode('ascii')}")
     print(f"Unique ID:        {sw.uniqueIdentifier}")
     print(f"Device Revision:  {sw.deviceRevision}")
     print(f"Supply Voltage:   {sw.readSupplyVoltage_mV()} mV")
