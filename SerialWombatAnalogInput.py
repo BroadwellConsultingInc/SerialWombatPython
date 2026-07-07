@@ -292,3 +292,14 @@ public:
 }
 """
 
+
+
+class SerialWombatAnalogInput_18AB(SerialWombatAnalogInput):
+	def __init__(self,serial_wombat):
+		SerialWombatAnalogInput.__init__(self,serial_wombat)
+
+	def pin(self):
+		return self._pin
+
+	def swPinModeNumber(self):
+		return self._pinMode

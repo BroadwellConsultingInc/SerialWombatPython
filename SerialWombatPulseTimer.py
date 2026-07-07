@@ -224,7 +224,7 @@ class SerialWombatPulseTimer_18AB(SerialWombatPulseTimer, SerialWombatAbstractPr
 	@return returns 0 or higher for success or a negative error code.
 	"""
 	def	configurePublicDataOutput(self, publicDataOutput):
-		tx = [ 203,self._pin,self._pinMode, publicDataOutput, 0x55,0x55,0x55] 
+		tx = [ 203,self._pin,self._pinMode, publicDataOutput, 0x55,0x55,0x55, 0x55] 
 		count,rx = self._sw.sendPacket(tx)
 		return count
 	

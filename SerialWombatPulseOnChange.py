@@ -273,3 +273,45 @@ class SerialWombatPulseOnChange( SerialWombatPin):
 		if (result < 0): 
 			return result
 		return 0
+	def setEntryOnPinCross(self, entryID, sourcePin, value):
+		result = self.setEntryParams(entryID, value, 0)
+		if (result < 0):
+			return result
+		return self.setEntryMode(entryID, sourcePin, 11)
+
+	def setEntryOnPinCrossAscending(self, entryID, sourcePin, value):
+		result = self.setEntryParams(entryID, value, 0)
+		if (result < 0):
+			return result
+		return self.setEntryMode(entryID, sourcePin, 12)
+
+	def setEntryOnPinCrossDescending(self, entryID, sourcePin, value):
+		result = self.setEntryParams(entryID, value, 0)
+		if (result < 0):
+			return result
+		return self.setEntryMode(entryID, sourcePin, 13)
+
+	def setEntryOnPinsLessThan(self, entryID, sourcePin, secondPin):
+		result = self.setEntryParams(entryID, secondPin, 0)
+		if (result < 0):
+			return result
+		return self.setEntryMode(entryID, sourcePin, 8)
+
+	def setEntryOnPinsGreaterThan(self, entryID, sourcePin, secondPin):
+		result = self.setEntryParams(entryID, secondPin, 0)
+		if (result < 0):
+			return result
+		return self.setEntryMode(entryID, sourcePin, 9)
+
+	def setEntryOnPinWithinRange(self, entryID, sourcePin, lowValue, highValue):
+		result = self.setEntryParams(entryID, lowValue, highValue)
+		if (result < 0):
+			return result
+		return self.setEntryMode(entryID, sourcePin, 14)
+
+	def setEntryOnPinOutsideRange(self, entryID, sourcePin, lowValue, highValue):
+		result = self.setEntryParams(entryID, lowValue, highValue)
+		if (result < 0):
+			return result
+		return self.setEntryMode(entryID, sourcePin, 15)
+

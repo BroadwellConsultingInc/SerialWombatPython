@@ -74,9 +74,9 @@ class SerialWombatQueuedPulseOutput ( SerialWombatPin ):
 	"""
 	def begin(self, pin,  initialState = 0, idleState = 0, unitsMs = False,   QueueIndex = 0xFFFF) :
 		self._pin = pin
-		self._pinMode = PIN_MODE_QUEUED_PULSE_OUTPUT
+		self._pinMode = SerialWombat.SerialWombatPinMode_t.PIN_MODE_QUEUED_PULSE_OUTPUT
 
-		tx =ByteArray([ 200,
+		tx = bytearray([ 200,
 		self._pin,
 		self._pinMode,
 		initialState,
@@ -114,3 +114,17 @@ class SerialWombatQueuedPulseOutput ( SerialWombatPin ):
 		0x55,0x55,0x55, 0x55]
 		result,rx = self._sw.sendPacket(tx)
 		return (result)
+
+	def queueEntriesFilled(self):
+		tx = [203,self._pin,self._pinMode,0x55,0x55,0x55,0x55,0x55]
+		result,rx = self._sw.sendPacket(tx)
+		if (result < 0):
+			return result
+		return rx[3] + 256 * rx[4]
+
+	def queueEntriesFree(self):
+		tx = [204,self._pin,self._pinMode,0x55,0x55,0x55,0x55,0x55]
+		result,rx = self._sw.sendPacket(tx)
+		if (result < 0):
+			return result
+		return rx[3] + 256 * rx[4]

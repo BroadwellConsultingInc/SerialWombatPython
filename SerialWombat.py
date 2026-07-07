@@ -40,14 +40,19 @@ def SW_LE32(i):
 
 
 class SerialWombatPinState_t ():
-	SW_LOW = 0,
-	SW_HIGH = 1,
-	SW_INPUT = 2,
+	SW_LOW = 0
+	SW_HIGH = 1
+	SW_INPUT = 2
 
 class ArduinoInputOutput ():
-    INPUT = 0,
-    OUTPUT = 1,
+    INPUT = 0
+    OUTPUT = 1
     PULLUP = 2
+
+# Firmware versions expected by this library revision.
+SW18AB_LATEST_FIRMWARE = 224
+SW08B_LATEST_FIRMWARE = 224
+SW4B_LATEST_FIRMWARE = 203
 
 
 
@@ -129,7 +134,10 @@ class SerialWombatDataSource():
     SW_DATA_SOURCE_SYSTEM_UTILIZATION = 74 #!< (74) A number between 0 and 65535 that scales to the average length of pin processing frames between 0 and 1000mS
     SW_DATA_SOURCE_VCC_mVOLTS = 75 #!< (75) The system source voltage in mV
     SW_DATA_SOURCE_VBG_COUNTS_VS_VREF = 76 #!< (76) A/D conversion of VBG against VRef .  Used for mfg calibration
+    SW_DATA_SOURCE_RESET_REGISTER = 77 #!< (77) Reset reason/status register
     SW_DATA_SOURCE_LFSR = 78 #!< (78) A  Linear Feedback Shift Register that produces a Pseudo random sequence of 16 bit values
+    SW_DATA_COM_ADDRESS_LOW = 79 #!< (79) Low 16 bits of the communication address
+    SW_DATA_COM_ADDRESS_HIGH = 80 #!< (80) High 16 bits of the communication address
     SW_DATA_SOURCE_0x55 = 85 #!< (85) 0x55 is a reserved value for resyncing.  Returns 0x55 0x55 
     SW_DATA_SOURCE_PIN_0_MV = 100 #!< (100) Pin 0 public output expressed in mV (for analog modes only)
     SW_DATA_SOURCE_PIN_1_MV = 101 #!< (101) Pin 1 public output expressed in mV (for analog modes only)
@@ -188,6 +196,8 @@ class SerialWombatCommands():
     COMMAND_BINARY_QUEUE_ADD_7BYTES = 0x92 #!< (0x92)
     COMMAND_BINARY_QUEUE_READ_BYTES = 0x93 #!< (0x93)
     COMMAND_BINARY_QUEUE_INFORMATION = 0x94 #!< (0x94)
+    COMMAND_BINARY_QUEUE_CLONE = 0x95 #!< (0x95)
+    COMMAND_BINARY_CONFIG_DATALOGGER = 0x96 #!< (0x96)
     COMMAND_BINARY_CONFIGURE = 0x9F #!< (0x9F)
     COMMAND_BINARY_READ_RAM = 0xA0 #!< (0xA0)
     COMMAND_BINARY_READ_FLASH = 0xA1 #!< (0xA1)
@@ -220,10 +230,14 @@ class SerialWombatCommands():
     CONFIGURE_PIN_MODE_DISABLE = 219 #!< (219)
     CONFIGURE_PIN_INPUTPROCESS = 211 #!< (211)
     CONFIGURE_PIN_MODE_HW_0 = 220 #!< (220)
+    COMMAND_BINARY_PIN_POLL_THRESHOLD = 0x8F #!< (0x8F)
+    COMMAND_BINARY_QUEUE_CLONE = 0x95 #!< (0x95)
+    COMMAND_SET_PIN_HW = 0xB8 #!< (0xB8)
+    COMMAND_BINARY_SET_ADDRESS = 0xB9 #!< (0xB9)
+    CONFIGURE_CHANNEL_MODE_CHECK_MODE_SUPPORTED = 218 #!< (218)
     CONFIGURE_CHANNEL_MODE_HW_1 = 221 #!< (221)
     CONFIGURE_CHANNEL_MODE_HW_2 = 222 #!< (222)
     CONFIGURE_CHANNEL_MODE_HW_3 = 223 #!< (223)
-
 class SerialWombatPinMode_t():
     PIN_MODE_DIGITALIO = 0 #!< (0)
     PIN_MODE_CONTROLLED = 1 #!< (1)
@@ -255,7 +269,15 @@ class SerialWombatPinMode_t():
     PIN_MODE_HS_COUNTER = 30 #!< (30)
     PIN_MODE_VGA = 31 #!<(31)
     PIN_MODE_PS2KEYBOARD = 32 #!<(32)
-    PIN_MODE_QUEUED_OUTPUT = 34 #!< (34)
+    PIN_MODE_I2C_CONTROLLER = 33 #!<(33)
+    PIN_MODE_QUEUED_PULSE_OUTPUT = 34 #!< (34)
+    PIN_MODE_QUEUED_OUTPUT = 34 #!< (34) Backwards compatible alias
+    PIN_MODE_FREQUENCY_OUTPUT = 36 #!< (36)
+    PIN_MODE_IRRX = 37 #!< (37)
+    PIN_MODE_IRTX = 38 #!< (38)
+    PIN_MODE_BLINK = 40 #!< (40)
+    PIN_MODE_SPI = 41 #!< (41)
+    PIN_MODE_RANDOMBLINK = 42 #!< (42)
     PIN_MODE_UNKNOWN = 255 #!< (0xFF)
 
 
@@ -384,6 +406,9 @@ class SerialWombatChip:
         return (self.hardwareSend(tx))
     
     def sendPacket(self, tx,  retryIfEchoDoesntMatch = False, startBytesToMatch = 1,  endBytesToMatch = 0):
+        if (len(tx) < 8):
+            for i in range(len(tx),8):
+                tx.append(0x55)
         retry = 4  #TODO self.communicationErrorRetries
         if (self._asleep):
             self._asleep = False;    
@@ -407,7 +432,7 @@ class SerialWombatChip:
         result = 0
         while (retry > 0):
             result,rx = self.sendReceivePacketHardware(tx)
-            if (rx[0] == 'E'):
+            if (rx[0] == ord('E')):
                 return (-1 * self.returnErrorCode(rx),rx)
 
             success = True
@@ -450,12 +475,12 @@ class SerialWombatChip:
     def begin(self,reset = True):
         if (reset):
             self.hardwareReset();
-            self._sendReadyTime = millis() + 1000
+            self.sendReadyTime = millis() + 1000
             delay(1000)
             self.initialize()
             return 1
         else:
-            self._sendReadyTime = 0
+            self.sendReadyTime = 0
             return self.initialize()
 
 
@@ -482,7 +507,7 @@ class SerialWombatChip:
         """
     def readVersion_uint32(self) :
         self.readVersion()
-        return (((self.fwVersion[0]) << 16) |((self.fwVersion[1]) << 8) |	self.fwVersion[2])
+        return self._firmwareVersionNumber()
 
     """!
 	\brief Read the 16 Bit public data associated with a Serial Wombat Pin Mode 
@@ -503,8 +528,13 @@ class SerialWombatChip:
 	@param pin The pin number to which to write
 	@param value The 16 bit value to write
     """
-    def writePublicData(self,pin, value):
-        tx = [0x82, pin, value & 0xFF, value // 256, 255, 0x55,0x55,0x55]
+    def writePublicData(self,pin, value, secondPin = None, secondValue = None):
+        value = value & 0xFFFF #simulate Arduino behavior of truncating to 16 bits
+        if (secondPin is None):
+            tx = [0x82, pin, value & 0xFF, value // 256, 255, 0x55,0x55,0x55]
+        else:
+            secondValue = secondValue & 0xFFFF #simulate Arduino behavior of truncating to 16 bits
+            tx = [0x82, pin, value & 0xFF, value // 256, secondPin, secondValue & 0xFF, secondValue // 256, 0x55]
         count,rx = self.sendPacket(tx)
         return (rx[2] + rx[3] * 256)
 
@@ -519,7 +549,7 @@ class SerialWombatChip:
     """
     def readSupplyVoltage_mV(self):
         #TODO add support for SW18AB
-        if (self.isSW18()):
+        if (self.isSW18() or self.isSW08()):
             self._supplyVoltagemV = self.readPublicData(SerialWombatDataSource.SW_DATA_SOURCE_VCC_mVOLTS);
             return(self._supplyVoltagemV)
         counts = self.readPublicData(66)
@@ -649,12 +679,13 @@ class SerialWombatChip:
         tx = [ord('V'),0x55,0x55,0x55,0x55,0x55,0x55,0x55]
         
         count,rx = self.sendPacket(tx)
-        if (rx[0] == ord('V') and rx[1] == ord('S') and rx[1] ==  ord('B')):
-
+        if (rx[0] == ord('V') and (rx[1] == ord('S') or rx[1] ==  ord('B'))):
+            self.model = [0,0,0,0]
             self.model[0] = rx[1]
             self.model[1] = rx[2]
             self.model[2] = rx[3]
             self.model[3] = 0
+            self.fwVersion = [0,0,0,0]
             self.fwVersion[0] = rx[5]
             self.fwVersion[1] = rx[6]
             self.fwVersion[2] = rx[7]
@@ -796,9 +827,85 @@ class SerialWombatChip:
         tx = bytes('!!!!!!!!','utf-8')
         self.sendPacket(tx)
 
-    #! \brief Returns true if the instance received a model number corresponding to the Serial Wombat 18 series of chips at begin
+    def _byteValue(self, value):
+        if isinstance(value, str):
+            return ord(value)
+        return value
+
+    def _modelChar(self, index):
+        if index >= len(self.model):
+            return 0
+        return self._byteValue(self.model[index])
+
+    def _firmwareVersionNumber(self):
+        if len(self.fwVersion) < 3:
+            return 0
+        try:
+            return ((self._byteValue(self.fwVersion[0]) - ord('0')) * 100 +
+                    (self._byteValue(self.fwVersion[1]) - ord('0')) * 10 +
+                    (self._byteValue(self.fwVersion[2]) - ord('0')))
+        except Exception:
+            return 0
+
+    #! rief Returns true if the instance received a model number corresponding to the Serial Wombat 04 series of chips at begin
+    def isSW04(self):
+        return ( self._modelChar(1) == ord('0') and self._modelChar(2) == ord('4'))
+
+    #! rief Returns true if the instance received a model number corresponding to the Serial Wombat 08 series of chips at begin
+    def isSW08(self):
+        return ( self._modelChar(1) == ord('0') and self._modelChar(2) == ord('8'))
+
+    #! rief Returns true if the instance received a model number corresponding to the Serial Wombat 18 series of chips at begin
     def isSW18(self):
-        return ( self.model[1] == 0x31 and self.model[2] == 0x38)
+        return ( self._modelChar(1) == ord('1') and self._modelChar(2) == ord('8'))
+
+    def isLatestFirmware(self):
+        v = self.readVersion_uint32()
+        if (self.isSW18()):
+            return (v == SW18AB_LATEST_FIRMWARE)
+        elif (self.isSW08()):
+            return (v == SW08B_LATEST_FIRMWARE)
+        else:
+            return (v == SW4B_LATEST_FIRMWARE)
+
+    def isPinModeSupported(self, pinMode):
+        if (self.isSW04()):
+            return pinMode in (SerialWombatPinMode_t.PIN_MODE_DIGITALIO,
+                               SerialWombatPinMode_t.PIN_MODE_ANALOGINPUT,
+                               SerialWombatPinMode_t.PIN_MODE_CONTROLLED,
+                               SerialWombatPinMode_t.PIN_MODE_SERVO,
+                               SerialWombatPinMode_t.PIN_MODE_PWM,
+                               SerialWombatPinMode_t.PIN_MODE_DEBOUNCE,
+                               SerialWombatPinMode_t.PIN_MODE_QUADRATUREENCODER,
+                               SerialWombatPinMode_t.PIN_MODE_WATCHDOG,
+                               SerialWombatPinMode_t.PIN_MODE_PULSETIMER,
+                               SerialWombatPinMode_t.PIN_MODE_PROTECTED_OUTPUT)
+        tx = [SerialWombatCommands.CONFIGURE_CHANNEL_MODE_CHECK_MODE_SUPPORTED, 1, pinMode, 0x55, 0x55, 0x55, 0x55, 0x55]
+        result, rx = self.sendPacket(tx)
+        return (-result != 3)
+
+    def sendPacketNoResponse(self, tx):
+        result, rx = self.sendPacketToHardware(tx)
+        return result
+
+    def comparePublicDataToThreshold(self, threshold = 0):
+        tx = bytearray([SerialWombatCommands.COMMAND_BINARY_PIN_POLL_THRESHOLD]) + SW_LE16(threshold) + bytearray([0x55,0x55,0x55,0x55,0x55])
+        result, rx = self.sendPacket(tx)
+        return (rx[1] + (rx[2] << 8) + (rx[3] << 16) + (rx[4] << 24))
+
+    def sleep4B(self):
+        self.sleep()
+
+    def sleep8B(self, delay_mS = 0):
+        tx = bytearray(b'SlEeP!') + SW_LE16(delay_mS)
+        self.sendPacket(tx)
+        self._asleep = True
+
+    def setAddress(self, address):
+        tx = bytearray([SerialWombatCommands.COMMAND_BINARY_SET_ADDRESS]) + SW_LE32(address) + bytearray([0x55,0x55,0x55])
+        result, rx = self.sendPacket(tx)
+        return result
+
 
     #! \brief Erases a page in flash.  Intended for use with the Bootloader, not by end users outside of bootloading sketch
     def eraseFlashPage(self, address):

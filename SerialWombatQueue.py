@@ -203,7 +203,7 @@ class SerialWombatQueue:
                 return(bytesWritten)
             bytesWritten += rx[3]
             delay(0)
-            if (millis() > startTime + self._timeout):
+            if (rx[3] == 0 and millis() > startTime + self._timeout):
                 return(bytesWritten)
 
         while (size - bytesWritten > 0):
@@ -219,7 +219,7 @@ class SerialWombatQueue:
             if (sendResult < 0):
                     return(bytesWritten)
             bytesWritten += rx[3]
-            if (millis() > startTime + self._timeout):
+            if (rx[3] == 0  and millis() > startTime + self._timeout):
                     return(bytesWritten)
         return (bytesWritten)
 
@@ -247,31 +247,33 @@ class SerialWombatQueue:
         bytesAvailable = 0
         startTime = millis()
         buffer = bytearray()
-        tx = bytearray( [0x94])+ SW_LE16(self.startIndex)+ bytearray([0x55,0x55,0x55,0x55,0x55])
-        sendResult,rx = self._sw.sendPacket(rx)
+        tx = bytearray([0x94]) + SW_LE16(self.startIndex) + bytearray([0x55,0x55,0x55,0x55,0x55])
+        sendResult,rx = self._sw.sendPacket(tx)
         if (sendResult >= 0):
-                bytesAvailable = (rx[4] + 256 * rx[5])
+            bytesAvailable = (rx[4] + 256 * rx[5])
 
         if (bytesAvailable < length):
-                length = bytesAvailable
+            length = bytesAvailable
         bytesRead = 0
         while (bytesRead < length):
             bytesToRead = length - bytesRead
             if (bytesToRead > 6):
                 bytesToRead = 6
-            tx = bytearray([ 0x93]+SW_LE16(self.startIndex)+ bytearray[bytesToRead,0x55,0x55,0x55,0x55 ])
+            tx = bytearray([0x93]) + SW_LE16(self.startIndex) + bytearray([bytesToRead,0x55,0x55,0x55,0x55])
             sendResult,rx = self._sw.sendPacket(tx)
             if (sendResult >= 0):
-                    for i  in range( rx[1]):
-                        if (bytesRead < length):
-                                buffer+= bytearray( rx[2 + i])
-                                bytesRead +=1
-                        else:
-                            return (buffer)  
-            if (millis() > startTime + self._timeout):
-                return(buffer)
+                for i in range(rx[1]):
+                    if (bytesRead < length):
+                        buffer.append(rx[2 + i])
+                        bytesRead += 1
+                    else:
+                        return buffer
+            else:
+                return buffer
+            currentTime = millis()
+            if (rx[1] == 0 and currentTime > startTime + self._timeout):
+                return buffer
         return buffer
-
 
 
     def setTimeout(self,  timeout_mS):
@@ -289,32 +291,9 @@ class SerialWombatQueue:
     will be less than length.
     """ 
     def readUInt16(self,length):
-        bytesAvailable = 0
-        startTime = millis()
-        buffer = bytearray()
-        tx = bytearray( [0x94])+ SW_LE16(self.startIndex)+ bytearray([0x55,0x55,0x55,0x55,0x55])
-        sendResult,rx = self._sw.sendPacket(rx)
-        if (sendResult >= 0):
-                bytesAvailable = (rx[4] + 256 * rx[5])
-
-        wordsAvaialble = bytesAvailable // 2
-        if (wordsAvaialble < length):
-                length = wordsAvaialble
-        wordsRead = 0
-        while (wordsRead < length):
-            bytesToRead = (length - wordsRead) * 2
-            if (bytesToRead > 6):
-                bytesToRead = 6
-            tx = bytearray([ 0x93]+SW_LE16(self.startIndex)+ bytearray[bytesToRead,0x55,0x55,0x55,0x55 ])
-            sendResult,rx = self._sw.sendPacket(tx)
-            if (sendResult >= 0):
-                    for i  in range( rx[1] / 2):
-                        if (wordsRead < length):
-                                buffer+= bytearray( rx[2 + i * 2] + rx[2 + i * 2 + 1] * 256)
-                                wordsRead +=1
-                        else:
-                            return (buffer)  
-            if (millis() > startTime + self._timeout):
-                return(buffer)
-        return buffer
+        data = self.readBytes(length * 2)
+        words = []
+        for i in range(0, len(data) - 1, 2):
+            words.append(data[i] + 256 * data[i + 1])
+        return words
 	

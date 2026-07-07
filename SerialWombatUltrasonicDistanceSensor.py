@@ -117,10 +117,10 @@ class SerialWombatUltrasonicDistanceSensor ( SerialWombatAbstractProcessedInput.
 				return result
 			tx = [204, self._pin, self._pinMode, servoIncrement & 0xFF, servoIncrement >> 8,
 				0x55,0x55, reverse]
-			result,rx = _sw.sendPacket(tx)
+			result,rx = self._sw.sendPacket(tx)
 			if (result < 0) :
 				return result 
-				tx = [205, _pin, _pinMode,  (servoMoveDelay & 0xFF), (servoMoveDelay >> 8),
+				tx = [205, self._pin, self._pinMode,  (servoMoveDelay & 0xFF), (servoMoveDelay >> 8),
 				servoReturnDelay & 0xFF,servoReturnDelay >>8, 0x55]
 			result,rx = self._sw.sendPacket(tx)
 			if (result < 0): 
@@ -135,7 +135,7 @@ class SerialWombatUltrasonicDistanceSensor ( SerialWombatAbstractProcessedInput.
 
 	def readServoSweepEntry(self, servoSweepEntry):
 		b = self._sw.readUserBuffer(self.servoMemoryIndex + 2 * servoSweepEntry,  2)
-		return (()(b[0] + 256 * b[1]))
+		return (b[0] + 256 * b[1])
 
 
 	def readServoSweepEntries(self, entries,  count):

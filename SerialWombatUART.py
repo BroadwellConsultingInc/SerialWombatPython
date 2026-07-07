@@ -275,6 +275,13 @@ class SerialWombatUART (SerialWombatPin):
                 result,peekrx = self._sw.sendPacket(peektx)
                 return peekrx[3]
 
+        def bytesToTransmit(self):
+                peektx = [ 203, self._pin,self._pinMode,0x55,0x55,0x55,0x55,0x55 ]
+                result,peekrx = self._sw.sendPacket(peektx)
+                if (result < 0):
+                        return result
+                return peekrx[4]
+
         """!
         @brief Reads a specified number of bytes from the SerialWombatUART RX queue
         @param buffer  An array into which to put received bytes
@@ -391,7 +398,7 @@ class SerialWombatSWUART ( SerialWombatUART):
     @param rxLength The length in bytes of the on-chip rx queue (can be 0 if rxPin == 255).  
     @param txLength The length in bytes of the on-chip tx queue (can be 0 if txPin == 255).  
     """
-    def begin(self,  baudRate,  pin,  rxPin,  txPin,  userMemoryOffset,  rxLength,  txLength):
+    def beginUserMemoryQueues(self,  baudRate,  pin,  rxPin,  txPin,  userMemoryOffset,  rxLength,  txLength):
         self._rxPin = rxPin
         self._txPin = txPin
         self._pin = pin
@@ -464,11 +471,51 @@ class SerialWombatSWUART ( SerialWombatUART):
 
         return (txoffset + rxoffset)
 
+    """!
+    @param baudRate  300, 1200, 2400, 4800, 9600,  19200,  38400,  57600,  115200
+    @param pin  The pin that will host the state machine.  This can be either the rxPin or txPin
+    @param rxPin The pin that will receive.  All 4 pins on the SW4B may be used.  255 if no receive function is needed
+    @param txPin The pin that will transmit.  Valid values for the SW4B are 1-3.  255 if no transmit function is needed
+    @param HWinterface  not used for SWUART, but required to match signature of HW UART begin function.  Ignored if called on SWUART instance.  
     """
-    #This method can't be called for Software UART because it doens't initialize queues in User Data Area
-    """
-    #int16_t begin( baudRate,  pin,  rxPin,  txPin,  HWinterface) = delete
+    def begin(self,  baudRate,  pin,  rxPin,  txPin,  HWInterface = 1):
+        self._rxPin = rxPin
+        self._txPin = txPin
+        self._pin = pin
+        self.rxQueue = SerialWombatQueue.SerialWombatQueue(self._sw)
+        self.txQueue = SerialWombatQueue.SerialWombatQueue(self._sw)
+        self.rxQueue.startIndex = 0xFFFF
+        self.txQueue.startIndex = 0xFFFF
 
+        self._pinMode = SerialWombat.SerialWombatPinMode_t.PIN_MODE_SW_UART
+
+
+        if (baudRate == 300):
+                self._baudMarker = 0
+        elif (baudRate == 1200):
+                self._baudMarker = 1
+        elif (baudRate == 2400):
+                self._baudMarker = 2
+        elif (baudRate == 4800):
+                self._baudMarker = 3
+        elif (baudRate == 9600):
+                self._baudMarker = 4
+        elif (baudRate == 19200):
+                self._baudMarker = 5
+        elif (baudRate == 38400):
+                self._baudMarker = 6
+        elif (baudRate == 57600):
+                self._baudMarker = 7
+	
+	#elif (baud == 115200):
+        #default:
+        else:
+                self._baudMarker = 7;  # Limit to 57600
+        tx = [ 200, self._pin,self._pinMode, self._baudMarker,self._rxPin,self._txPin,0x55, 0x55 ]
+
+        result,rx = self._sw.sendPacket(tx)
+        return (result)
+        
     """!
     @brief Write bytes to the SerialWombatUART for Transmit
     @param buffer  An array of  bytes to send
@@ -482,8 +529,54 @@ class SerialWombatSWUART ( SerialWombatUART):
     entire message has been sent to the SerialWombatUART transmit queue.
     """
     def write(self, buffer,  size):
-        return (self.txQueue.writeBuffer(buffer, size))
-    
+        if (self.txQueue.startIndex != 0xFFFF):
+            return (self.txQueue.writeBuffer(buffer, size))
+        else:
+                sent = 0
+                while (sent < size):
+                        bytesToSend = 4
+                        if ((size - sent) < 4):
+                                bytesToSend = size - sent
+                        tx = [ 201, self._pin,self._pinMode, bytesToSend,0x55,0x55,0x55,0x55 ]
+                        for i in range(bytesToSend):
+                                tx[4 + i] = buffer[sent]
+                                sent += 1
+                        result,rx = self._sw.sendPacket(tx)
+                        if (rx[3] < 4):
+                                return (sent) #Almost full
+                        #delay (1000)
+                return sent
+
+    def readBytes(self,   size):
+        if (self.rxQueue.startIndex != 0xFFFF):
+            return (self.rxQueue.readBytes( size))
+        else:
+                buffer = bytearray()
+                received = 0
+                bytesAvailable = 1
+                while (bytesAvailable > 0 and received < size):
+                        bytesToReceive = 4
+                        if ((size - received) < 4):
+                                bytesToReceive = size - received
+                        tx = [ 202, self._pin,self._pinMode, bytesToReceive,0x55,0x55,0x55,0x55 ]
+                        result,rx = self._sw.sendPacket(tx)
+                        if (rx[3] > 4):
+                                rx[3] = 4
+                        for i in range(rx[3]):
+                                buffer.append(rx[4 + i])
+                                received += 1
+                        bytesAvailable = rx[3]
+                        #delay(0)
+
+                return buffer
+  
+    def bytesToTransmit(self):
+        tx = [ 203, self._pin,self._pinMode,0x55,0x55,0x55,0x55,0x55 ]
+        result,rx = self._sw.sendPacket(tx)
+        if (result < 0):
+            return 0
+        return rx[6]
+
     """!
     @brief  Discard all received bytes
     """

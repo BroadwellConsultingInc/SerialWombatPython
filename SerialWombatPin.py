@@ -28,3 +28,50 @@ class SerialWombatPin:
     def swPinModeNumber(self):
         return (self._pinMode)
 
+    def _flattenPacketBytes(self, values):
+        data = bytearray()
+        for value in values:
+            if isinstance(value, (bytes, bytearray)):
+                data += bytearray(value)
+            elif isinstance(value, (list, tuple)):
+                data += bytearray(value)
+            else:
+                data.append(int(value) & 0xFF)
+        return data
+
+    def initPacketNoResponse(self, packetNumber, *params):
+        tx = bytearray([200 + packetNumber, self._pin, self._pinMode])
+        tx += self._flattenPacketBytes(params)
+        while len(tx) < 8:
+            tx.append(0x55)
+        tx = tx[:8]
+        return self._sw.sendPacketNoResponse(tx)
+
+    def disable(self):
+        tx = bytearray([219, self._pin, self._pinMode, 0x55, 0x55, 0x55, 0x55, 0x55])
+        result, rx = self._sw.sendPacket(tx)
+        return result
+
+    def enablePullup(self, enabled = True):
+        tx = bytearray([SerialWombat.SerialWombatCommands.COMMAND_SET_PIN_HW, self._pin, 0, 1 if enabled else 0, 0x55, 0x55, 0x55, 0x55])
+        result, rx = self._sw.sendPacket(tx)
+        return result
+
+    def enablePulldown(self, enabled = True):
+        tx = bytearray([SerialWombat.SerialWombatCommands.COMMAND_SET_PIN_HW, self._pin, 1, 1 if enabled else 0, 0x55, 0x55, 0x55, 0x55])
+        result, rx = self._sw.sendPacket(tx)
+        return result
+
+    def enableOpenDrain(self, enabled = True):
+        tx = bytearray([SerialWombat.SerialWombatCommands.COMMAND_SET_PIN_HW, self._pin, 2, 1 if enabled else 0, 0x55, 0x55, 0x55, 0x55])
+        result, rx = self._sw.sendPacket(tx)
+        return result
+
+    def forceDMA(self, enabled = True):
+        tx = bytearray([SerialWombat.SerialWombatCommands.COMMAND_SET_PIN_HW, self._pin, 3, 1 if enabled else 0, 0x55, 0x55, 0x55, 0x55])
+        result, rx = self._sw.sendPacket(tx)
+        return result
+
+    def setPinNumberForTesting(self, pin):
+        self._pin = pin
+

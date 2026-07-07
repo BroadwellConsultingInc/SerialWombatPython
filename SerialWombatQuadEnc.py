@@ -122,11 +122,13 @@ class SerialWombatQuadEnc (SerialWombatPin):
 	def begin(self, pin, secondPin, debounce_mS = 10, pullUpsEnabled = True, readState = 6):
 		self._pin = pin
 		self._secondPin = secondPin
+		self._pinMode = SerialWombat.SerialWombatPinMode_t.PIN_MODE_QUADRATUREENCODER
 		tx = bytearray([ 
                     200,
                     self._pin,
-                     5 ]) + SW_LE16(debounce_mS) + bytearray([ self._secondPin,readState,pullUpsEnabled])
-		self._sw.sendPacket(tx)
+                     self._pinMode ]) + SW_LE16(debounce_mS) + bytearray([ self._secondPin,readState,pullUpsEnabled])
+		result,rx = self._sw.sendPacket(tx)
+		return result
 
 	
 	"""!
@@ -151,3 +153,33 @@ class SerialWombatQuadEnc (SerialWombatPin):
 	def write(self,value):
 		self._sw.writePublicData(self._pin, value)
 
+
+
+class SerialWombatQuadEnc_18AB (SerialWombatQuadEnc):
+	def __init__(self,serial_wombat):
+		SerialWombatQuadEnc.__init__(self, serial_wombat)
+
+	def readFrequency(self):
+		tx = [205,self._pin,self._pinMode,0x55,0x55,0x55,0x55,0x55]
+		result,rx = self._sw.sendPacket(tx)
+		if (result < 0):
+			return 0
+		return (rx[3] + (rx[4] << 8) )
+
+	def writeFrequencyPeriodmS(self, period_mS):
+		tx = bytearray([204,self._pin,self._pinMode]) + SW_LE16(period_mS) + bytearray([0x55,0x55,0x55])
+		result,rx = self._sw.sendPacket(tx)
+		return result
+
+	def writeMinMaxIncrementTargetPin(self, minValue, maxValue, increment, targetPin):
+		tx = bytearray([201,self._pin,self._pinMode]) + SW_LE16(increment) +bytearray([0x55,0x55,0x55])
+		result,rx = self._sw.sendPacket(tx)
+		if (result < 0):
+			return result
+		tx = bytearray([202,self._pin,self._pinMode]) + SW_LE16(minValue) + SW_LE16(maxValue) + bytearray([0x55])
+		result,rx = self._sw.sendPacket(tx)
+		if (result < 0):
+			return result
+		tx = bytearray([203,self._pin,self._pinMode,targetPin,0x55,0x55,0x55,0x55])
+		result,rx = self._sw.sendPacket(tx)
+		return result

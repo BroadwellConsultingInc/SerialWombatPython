@@ -82,7 +82,7 @@ class SerialWombat18ABDataLogger:
             int(period),
             1 if queueFrameIndex else 0,
             1 if queueOnChange else 0
-        ])
+        ]) + bytearray([0x55,0x55]) # Pad to 8 bytes
         result, _ = self._sw.sendPacket(tx)
         return result
 

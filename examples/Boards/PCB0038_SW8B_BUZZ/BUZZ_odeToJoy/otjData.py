@@ -1,0 +1,994 @@
+# Converted from Boards/PCB0038_SW8B_BUZZ/BUZZ_odeToJoy/otjData.ino
+import SerialWombat
+from ArduinoFunctions import delay, delayMicroseconds, millis
+
+# Import constants from the SerialWombat module so names match the Arduino examples.
+for _name in dir(SerialWombat.SerialWombatPinMode_t):
+    if _name.startswith("PIN_MODE_"):
+        globals()[_name] = getattr(SerialWombat.SerialWombatPinMode_t, _name)
+for _name in dir(SerialWombat.SerialWombatDataSource):
+    if _name.startswith("SW_DATA_"):
+        globals()[_name] = getattr(SerialWombat.SerialWombatDataSource, _name)
+PERIOD_1mS = 0; PERIOD_2mS = 1; PERIOD_4mS = 2; PERIOD_8mS = 3; PERIOD_16mS = 4; PERIOD_32mS = 5; PERIOD_64mS = 6; PERIOD_128mS = 7; PERIOD_256mS = 8; PERIOD_512mS = 9; PERIOD_1024mS = 10
+HC_SR04 = 0
+RAW = 0; AVERAGE = 1; FILTERED = 2; MINIMUM = 3; MAXIMUM = 4
+DATACOUNT = 2; ADDRESS = 3; COMMAND = 4
+
+#Comment these lines in if you're connecting directly to a Serial Wombat Chip's UART through cPython serial Module
+#Change the parameter of SerialWombatChip_cpy_serial to match the name of your Serial port
+#import SerialWombat_cpy_serial
+#sw = SerialWombat_cpy_serial.SerialWombatChip_cpy_serial("COM25")
+
+#Comment these lines in if you're connecting to a Serial Wombat Chip's I2C port using cPython smbus2
+#Change busNumber and swI2Caddress to match your configuration
+#import SerialWombat_smbus2_i2c
+#busNumber = 1
+#swI2Caddress = 0x6B
+#sw = SerialWombat_smbus2_i2c.SerialWombatChip_smbus2_i2c(busNumber, swI2Caddress)
+
+#Comment these lines in if you're connecting to a Serial Wombat Chip's I2C port using CircuitPython's I2C interface
+#Change sclPin, sdaPin, and swI2Caddress to match your configuration
+#import board
+#import busio
+#import SerialWombat_cp_i2c
+#swI2Caddress = 0x6B
+#i2c = busio.I2C(board.SCL, board.SDA)
+#sw = SerialWombat_cp_i2c.SerialWombatChip_cp_i2c(i2c, swI2Caddress)
+
+#Comment these lines in if you're connecting to a Serial Wombat Chip's I2C port using Micropython's I2C interface
+#Change the values for sclPin, sdaPin, and swI2Caddress to match your configuration
+#import machine
+#import SerialWombat_mp_i2c
+#sclPin = 22
+#sdaPin = 21
+#swI2Caddress = 0x6B
+#i2c = machine.I2C(0,
+#            scl=machine.Pin(sclPin),
+#            sda=machine.Pin(sdaPin),
+#            freq=100000,timeout = 50000)
+#sw = SerialWombat_mp_i2c.SerialWombatChip_mp_i2c(i2c,swI2Caddress)
+#sw.address = swI2Caddress
+
+#Comment these lines in if you're connecting to a Serial Wombat Chip's UART port using Micropython's UART interface
+#Change the values for UARTnum, txPin, and rxPin to match your configuration
+import machine
+import SerialWombat_mp_UART
+txPin = 12
+rxPin = 14
+UARTnum = 2
+uart = machine.UART(UARTnum, baudrate=115200, tx=txPin, rx=rxPin)
+sw = SerialWombat_mp_UART.SerialWombatChipUART(uart)
+
+#Interface independent code starts here:
+
+
+mnC0 = 16
+mnCs0 = 17
+mnDb0 = 17
+mnD0 = 18
+mnDs0 = 19
+mnEb0 = 19
+mnE0 = 20
+mnF0 = 21
+mnFs0 = 23
+mnGb0 = 23
+mnG0 = 24
+mnGs0 = 25
+mnAb0 = 25
+mnA0 = 27
+mnAs0 = 29
+mnBb0 = 29
+mnB0 = 30
+mnC1 = 32
+mnCs1 = 34
+mnDb1 = 34
+mnD1 = 36
+mnDs1 = 38
+mnEb1 = 38
+mnE1 = 41
+mnF1 = 43
+mnFs1 = 46
+mnGb1 = 46
+mnG1 = 49
+mnGs1 = 51
+mnAb1 = 51
+mnA1 = 55
+mnAs1 = 58
+mnBb1 = 58
+mnB1 = 61
+mnC2 = 65
+mnCs2 = 69
+mnDb2 = 69
+mnD2 = 73
+mnDs2 = 77
+mnEb2 = 77
+mnE2 = 82
+mnF2 = 87
+mnFs2 = 92
+mnGb2 = 92
+mnG2 = 98
+mnGs2 = 103
+mnAb2 = 103
+mnA2 = 110
+mnAs2 = 116
+mnBb2 = 116
+mnB2 = 123
+mnC3 = 130
+mnCs3 = 138
+mnDb3 = 138
+mnD3 = 146
+mnDs3 = 155
+mnEb3 = 155
+mnE3 = 164
+mnF3 = 174
+mnFs3 = 185
+mnGb3 = 185
+mnG3 = 196
+mnGs3 = 207
+mnAb3 = 207
+mnA3 = 220
+mnAs3 = 233
+mnBb3 = 233
+mnB3 = 246
+mnC4 = 261
+mnCs4 = 277
+mnDb4 = 277
+mnD4 = 293
+mnDs4 = 311
+mnEb4 = 311
+mnE4 = 329
+mnF4 = 349
+mnFs4 = 369
+mnGb4 = 369
+mnG4 = 392
+mnGs4 = 415
+mnAb4 = 415
+mnA4 = 440
+mnAs4 = 466
+mnBb4 = 466
+mnB4 = 493
+mnC5 = 523
+mnCs5 = 554
+mnDb5 = 554
+mnD5 = 587
+mnDs5 = 622
+mnEb5 = 622
+mnE5 = 659
+mnF5 = 698
+mnFs5 = 739
+mnGb5 = 739
+mnG5 = 783
+mnGs5 = 830
+mnAb5 = 830
+mnA5 = 880
+mnAs5 = 932
+mnBb5 = 932
+mnB5 = 987
+mnC6 = 1046
+mnCs6 = 1108
+mnDb6 = 1108
+mnD6 = 1174
+mnDs6 = 1244
+mnEb6 = 1244
+mnE6 = 1318
+mnF6 = 1396
+mnFs6 = 1479
+mnGb6 = 1479
+mnG6 = 1567
+mnGs6 = 1661
+mnAb6 = 1661
+mnA6 = 1760
+mnAs6 = 1864
+mnBb6 = 1864
+mnB6 = 1975
+mnC7 = 2093
+mnCs7 = 2217
+mnDb7 = 2217
+mnD7 = 2349
+mnDs7 = 2489
+mnEb7 = 2489
+mnE7 = 2637
+mnF7 = 2793
+mnFs7 = 2959
+mnGb7 = 2959
+mnG7 = 3135
+mnGs7 = 3322
+mnAb7 = 3322
+mnA7 = 3520
+mnAs7 = 3729
+mnBb7 = 3729
+mnB7 = 3951
+mnC8 = 4186
+mnCs8 = 4434
+mnDb8 = 4434
+mnD8 = 4698
+mnDs8 = 4978
+mnEb8 = 4978
+
+qn = 2  #Quarter Note
+dqn = 3  # Dotted Half Note
+hn = 4  # Half Note
+en = 1  # Eighth Note
+
+# TODO_MANUAL_CONVERSION: otj =  # otj = OdeToJoy
+    #Highest note
+      # TODO_MANUAL_CONVERSION_INDENT: mnB5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,  #1
+      # TODO_MANUAL_CONVERSION_INDENT: mnB5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnC6 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD6 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnD6 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,  #2
+      # TODO_MANUAL_CONVERSION_INDENT: mnC6 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnB5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnA5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnG5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,  #3
+      # TODO_MANUAL_CONVERSION_INDENT: mnG5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnA5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnB5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnB5 , dqn
+    # TODO_MANUAL_CONVERSION_INDENT: ,  #4
+      # TODO_MANUAL_CONVERSION_INDENT: mnA5 , en
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnA5 , hn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnB5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,  #5
+      # TODO_MANUAL_CONVERSION_INDENT: mnB5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnC6 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD6 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnD6 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,  #6
+      # TODO_MANUAL_CONVERSION_INDENT: mnC6 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnB5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnA5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnG5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,  #7
+      # TODO_MANUAL_CONVERSION_INDENT: mnG5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnA5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnB5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnA5 , dqn
+    # TODO_MANUAL_CONVERSION_INDENT: ,  #8
+      # TODO_MANUAL_CONVERSION_INDENT: mnG5 , en
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnG5 , hn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+
+
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnA5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,  #9
+      # TODO_MANUAL_CONVERSION_INDENT: mnA5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnB5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnG5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnA5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,  #10
+      # TODO_MANUAL_CONVERSION_INDENT: mnB5 , en
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnC6 , en
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnB5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnG5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnA5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,  #11
+      # TODO_MANUAL_CONVERSION_INDENT: mnB5 , en
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnC6 , en
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnB5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnA5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnG5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,  #12
+      # TODO_MANUAL_CONVERSION_INDENT: mnA5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: 0 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnB5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnB5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,  #13
+      # TODO_MANUAL_CONVERSION_INDENT: mnB5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnC6 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD6 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnD6 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,  #14
+      # TODO_MANUAL_CONVERSION_INDENT: mnC6 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnB5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnA5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnG5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,  #15
+      # TODO_MANUAL_CONVERSION_INDENT: mnG5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnA5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnB5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnA5 , dqn
+    # TODO_MANUAL_CONVERSION_INDENT: ,  #16
+      # TODO_MANUAL_CONVERSION_INDENT: mnG5 , en
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnG5 , hn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+    #
+    #{mnB5 , qn},
+    #{mnB5 , qn},
+    #{mnC6 , qn},
+    #{mnD6 , qn},
+    #
+    #{mnD6 , qn},
+    #{mnC6 , qn},
+    #{mnB5 , qn},
+    #{mnA5 , qn},
+    #
+    #{mnG5 , qn},
+    #{mnG5 , qn},
+    #{mnA5 , qn},
+    #{mnB5 , qn},
+    #
+    #{mnA5 , dqn},
+    #{mnG5 , en},
+    #{mnG5 , hn},
+    #
+    #
+
+
+
+
+      # TODO_MANUAL_CONVERSION_INDENT: 0, 0
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+  # TODO_MANUAL_CONVERSION_INDENT: ,
+
+    #2nd highest note
+      # TODO_MANUAL_CONVERSION_INDENT: mnD5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnD5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnE5 , en
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnFs5 , en
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnG5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnD5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnFs5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnG5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnG5 , dqn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnFs5 , en
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnFs5 , hn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnG5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnE5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnF5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnF5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnE5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnE5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnD5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnFs5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnG5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnFs5 , dqn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: 0 , en
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: 0 , hn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnFs5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,  #9
+      # TODO_MANUAL_CONVERSION_INDENT: mnD5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: 0 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnFs5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,  #10
+      # TODO_MANUAL_CONVERSION_INDENT: mnG5 , en
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnF5 , en
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnG5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: 0 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnFs5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,  #11
+      # TODO_MANUAL_CONVERSION_INDENT: mnFs5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnFs5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnDs5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnE5 , en
+    # TODO_MANUAL_CONVERSION_INDENT: ,  #12
+      # TODO_MANUAL_CONVERSION_INDENT: mnD5 , en
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnCs4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnD5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,  #13
+      # TODO_MANUAL_CONVERSION_INDENT: mnD5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnE5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnF5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnF5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,  #14
+      # TODO_MANUAL_CONVERSION_INDENT: mnE5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnE5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnD5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,  #15
+      # TODO_MANUAL_CONVERSION_INDENT: mnD5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnFs5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnG5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnFs5 , dqn
+    # TODO_MANUAL_CONVERSION_INDENT: ,  #16
+      # TODO_MANUAL_CONVERSION_INDENT: 0 , en
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: 0 , hn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+    #
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #
+    #
+    #
+    #
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #
+      # TODO_MANUAL_CONVERSION_INDENT: 0, 0
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+  # TODO_MANUAL_CONVERSION_INDENT: ,
+
+  # #if (NUMBER_OF_BUZZERS >= 3)
+      # TODO_MANUAL_CONVERSION_INDENT: mnG4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnG4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnA4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnB4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnB4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnA4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnG4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnG4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnF4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnC5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnD5 , dqn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD5 , en
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD5 , hn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnD5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnC5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnB4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnG4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnA4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnB4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnC5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnB4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnB4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnC5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnC5 , dqn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnB4 , en
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnB4, hn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnD5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,  #9
+      # TODO_MANUAL_CONVERSION_INDENT: mnFs4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnG4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnB4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnC5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnB4 , en
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnA4 , en
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnG4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnB4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnC5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnB4 , en
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnA4 , en
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnB4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnB4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnB4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnA4 , en
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnG4 , en
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnFs4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnG4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnG4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,  #12
+      # TODO_MANUAL_CONVERSION_INDENT: mnD5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnC5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnB4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnG4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnA4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnB4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnC5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnB4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnB4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnC5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD5 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnC5 , dqn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnB4 , en
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnB4 , hn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+    #
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #
+    #
+    #
+    #
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #
+      # TODO_MANUAL_CONVERSION_INDENT: 0, 0
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+  # TODO_MANUAL_CONVERSION_INDENT: ,
+  # #endif
+  # #if (NUMBER_OF_BUZZERS >= 4)
+
+      # TODO_MANUAL_CONVERSION_INDENT: 0 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: 0 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnG4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnG4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnD4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnC3 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnB3 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnB3 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnA3 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnG3 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnD4 , dqn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD4 , en
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD4 , hn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnG4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,  #5
+      # TODO_MANUAL_CONVERSION_INDENT: mnG4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnG4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnG4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnC3 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnC3 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnC3 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnC3 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnD3 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD3 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD3 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD3 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnD3 , dqn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnG4 , en
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnG4, hn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnD4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,  #9
+      # TODO_MANUAL_CONVERSION_INDENT: mnD4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnD4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnD4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnDs4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnB3 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnE4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnA3 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD4, qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: 0,qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnG4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnG4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnG4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnG4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnC3 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnC3 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnC3 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnC3 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnD4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnD4 , qn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+      # TODO_MANUAL_CONVERSION_INDENT: mnD4 , dqn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnG4 , en
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+      # TODO_MANUAL_CONVERSION_INDENT: mnG4, hn
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+
+    #
+    #{mnG4 , qn}, //13
+    #{mnG4 , qn},
+    #{mnG4 , qn},
+    #{mnG4 , qn},
+    #
+    #{mnC3 , qn},
+    #{mnC3 , qn},
+    #{mnC3 , qn},
+    #{mnC3 , qn},
+    #
+    #{mnD3 , qn},
+    #{mnD3 , qn},
+    #{mnD3 , qn},
+    #{mnD3 , qn},
+    #
+    #{mnD3 , dqn},
+    #{mnG4 , en},
+    #{mnG4, hn},
+    #
+    #
+    #
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #
+    #
+    #
+    #
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #{mnx5 , qn},
+    #
+      # TODO_MANUAL_CONVERSION_INDENT: 0, 0
+    # TODO_MANUAL_CONVERSION_INDENT: ,
+  # #endif

@@ -62,6 +62,7 @@ from SerialWombat import SW_LE16
 """
 class SerialWombatAbstractScaledOutput(SerialWombatPin.SerialWombatPin): 
     def __init__(self,serial_wombat):
+        super().__init__(serial_wombat)
         self._asosw = serial_wombat
         self.PERIOD_1mS = 0
         self.PERIOD_2mS = 1
@@ -93,7 +94,7 @@ class SerialWombatAbstractScaledOutput(SerialWombatPin.SerialWombatPin):
 
     def begin(self, pin, pinmode):
         self._pin = pin
-        self._pinMode = pin
+        self._pinMode = pinmode
         
     def writeTimeout(self, timeout_mS,  timeoutOutputValue):
         tx = bytearray([ SerialWombatCommands.CONFIGURE_PIN_OUTPUTSCALE,
@@ -351,13 +352,13 @@ class SerialWombatAbstractScaledOutput(SerialWombatPin.SerialWombatPin):
      @param samplePeriod an enumerated time for how often the PID controller updates.  This value should be based on how fast the system responds to change in output so that integral and derivative terms work correctly.
      @return returns 0 or higher if success, or a negative error code
      """
-    def writePID(self, kp,  ki,  kd, target,samplePeriod):
+    def writePID(self, kp,  ki,  kd, target, samplePeriod, targetPin = 255, biDirectional = False):
         tx = bytearray([ SerialWombatCommands.CONFIGURE_PIN_OUTPUTSCALE,
                 self._pin,
                 self._pinMode,
                 100,]) # Set kp and ki
-        tx +=	SW_LE16(kp)
-        tx +=	SW_LE16(ki)
+        tx += SW_LE16(kp)
+        tx += SW_LE16(ki)
         result,rx = self._asosw.sendPacket(tx)
         if (result < 0):
             return(result)
@@ -366,14 +367,16 @@ class SerialWombatAbstractScaledOutput(SerialWombatPin.SerialWombatPin):
                 self._pin,
                 self._pinMode,
                 101])  # Set kd
-        tx += 	SW_LE16(kd)
-        tx += bytearray([0x55,0x55])
+        tx += SW_LE16(kd)
+        tx += bytearray([targetPin,1 if biDirectional else 0])
             
         result,rx = self._asosw.sendPacket(tx)
         if (result < 0):
             return(result)
 
-        self.writeScalingTargetValue(target)
+        result = self.writeScalingTargetValue(target)
+        if (result < 0):
+            return(result)
         tx = [ SerialWombatCommands.CONFIGURE_PIN_OUTPUTSCALE,
                 self._pin,
                 self._pinMode,
@@ -398,6 +401,26 @@ class SerialWombatAbstractScaledOutput(SerialWombatPin.SerialWombatPin):
         return 0
 
 
+
+    def writeRamp(self, slowIncrement, fastIncrement, fastSlowThreshold, samplePeriod = 0):
+        tx = bytearray([ SerialWombatCommands.CONFIGURE_PIN_OUTPUTSCALE,
+                self._pin,
+                self._pinMode,
+                103]) # Configure ramp
+        tx += SW_LE16(slowIncrement)
+        tx += SW_LE16(fastIncrement)
+        result,rx = self._asosw.sendPacket(tx)
+        if (result < 0):
+            return(result)
+
+        tx = bytearray([ SerialWombatCommands.CONFIGURE_PIN_OUTPUTSCALE,
+                self._pin,
+                self._pinMode,
+                104])
+        tx += SW_LE16(fastSlowThreshold)
+        tx += bytearray([samplePeriod, 0x55])
+        result,rx = self._asosw.sendPacket(tx)
+        return(result)
 
     """!
      @brief Request Last Output Value
