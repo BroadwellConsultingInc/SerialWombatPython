@@ -50,6 +50,13 @@ class SerialWombatChip_smbus2_i2c(SerialWombat.SerialWombatChip):
 
 def SerialWombatChipInstance(address):
     swi2cbus = SMBus(I2C_BUS)
-    return SerialWombatChip_smbus2_i2c(swi2cbus,address)
+   if (isinstance(address,list)):
+        swcs = []
+        for address_i in address:
+            swcs.append(SerialWombatChip_smbus2_i2c(swi2cbus,address_i))
+        return swcs
+            
+    else:
+        return SerialWombatChip_smbus2_i2c(swi2cbus,address)
 
 

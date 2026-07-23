@@ -44,4 +44,11 @@ class SerialWombatChip_mp_i2c(SerialWombat.SerialWombatChip):
 
 def SerialWombatChipInstance(address):
     i2c_port = machine.I2C(SW_I2C_BUS, scl=machine.Pin(SW_SCL_PIN), sda=machine.Pin(SW_SDA_PIN), freq=SW_I2C_FREQ)
-    return SerialWombatChip_mp_i2c(address,i2c_port)
+   if (isinstance(address,list)):
+        swcs = []
+        for address_i in address:
+            swcs.append(SerialWombatChip_mp_i2c(address_i, i2c_port))
+        return swcs
+            
+    else:
+        return SerialWombatChip_mp_i2c(address,i2c_port)

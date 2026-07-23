@@ -72,6 +72,13 @@ class SerialWombatChip_cpy_serial_addressed(SerialWombat.SerialWombatChip):
 
 def SerialWombatChipInstance(address):
     ser = serial.Serial(SW_SERIAL_PORT,115200,timeout=0)
-    return SerialWombatChip_cpy_serial_addressed(ser,address)
+    if (isinstance(address,list)):
+        swcs = []
+        for address_i in address:
+            swcs.append(SerialWombatChip_cpy_serial_addressed(ser,address_i))
+        return swcs
+            
+    else:
+        return SerialWombatChip_cpy_serial_addressed(ser,address)
 
 

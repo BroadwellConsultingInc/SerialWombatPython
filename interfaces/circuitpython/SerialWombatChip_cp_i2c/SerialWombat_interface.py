@@ -55,4 +55,11 @@ class SerialWombatChip_cp_i2c(SerialWombat.SerialWombatChip):
 
 def SerialWombatChipInstance(address):
     sw_i2c = busio.I2C(SW_SCL_PIN, SW_SDA_PIN)
-    return SerialWombatChip_cp_i2c(address,sw_i2c)
+    if (isinstance(address,list)):
+        swcs = []
+        for address_i in address:
+            swcs.append(SerialWombatChip_cp_i2c(address_i,sw_i2c))
+        return swcs
+            
+    else:
+        return SerialWombatChip_cp_i2c(address,sw_i2c)
