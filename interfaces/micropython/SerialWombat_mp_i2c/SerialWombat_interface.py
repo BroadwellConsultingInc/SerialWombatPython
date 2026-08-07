@@ -6,8 +6,8 @@ import machine
 #CONFIGURE HERE:
 ################################################
 SW_I2C_BUS = 1		
-SW_SCL_PIN = machine.pin(7) # D5
-SW_SDA_PIN = machine.pin(6) # D4
+SW_SCL_PIN = 7 # D5
+SW_SDA_PIN = 6 # D4
 SW_I2C_FREQ = 100000
 
 class SerialWombatChip_mp_i2c(SerialWombat.SerialWombatChip):
@@ -44,7 +44,7 @@ class SerialWombatChip_mp_i2c(SerialWombat.SerialWombatChip):
 
 def SerialWombatChipInstance(address):
     i2c_port = machine.I2C(SW_I2C_BUS, scl=machine.Pin(SW_SCL_PIN), sda=machine.Pin(SW_SDA_PIN), freq=SW_I2C_FREQ)
-   if (isinstance(address,list)):
+    if (isinstance(address,list)):
         swcs = []
         for address_i in address:
             swcs.append(SerialWombatChip_mp_i2c(address_i, i2c_port))

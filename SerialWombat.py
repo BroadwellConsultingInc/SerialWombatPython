@@ -733,7 +733,7 @@ class SerialWombatChip:
     """
     def jumpToBoot(self):
         tx = bytes("BoOtLoAd",'utf-8')
-        self.sendPacket(tx)
+        self.sendPacketNoResponse(tx)
 
     """!
     @brief Read Address from RAM based on 16 bit address

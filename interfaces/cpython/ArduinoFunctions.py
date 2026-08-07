@@ -11,5 +11,5 @@ def delay(delayMs):
 
 def delayMicroseconds(delayUs):
     startTime = time.time()
-    while (time.time() < startTime + delayUs):
+    while (time.time() < startTime + delayUs/1000000):
         continue

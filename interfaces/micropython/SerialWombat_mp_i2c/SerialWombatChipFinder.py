@@ -33,8 +33,8 @@ else:
                 sw.queryVersion()
 
                 print("  Serial Wombat Chip detected!")
-                print("  Model:            %s" % sw.model.decode("ascii"))
-                print("  Firmware Version: %s" % sw.fwVersion.decode("ascii"))
+                print("  Model:            %s" % bytes( sw.model).decode())
+                print("  Firmware Version: %s" % bytes(sw.fwVersion).decode("ascii"))
                 print("  Unique ID:        %s" % sw.uniqueIdentifier)
                 print("  Device Revision:  %s" % sw.deviceRevision)
                 print("  Supply Voltage:   %d mV" % sw.readSupplyVoltage_mV())

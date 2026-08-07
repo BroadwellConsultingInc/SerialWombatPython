@@ -29,23 +29,12 @@ import SerialWombat
 from ArduinoFunctions import delay
 from ArduinoFunctions import millis
 
+SW_ADDRESS = 0x63  #Change the address to match your configuration
 
-#Comment these lines in if you're connecting to a Serial Wombat Chip's I2C port using Micropython's I2C interface
-#Change the values for sclPin, sdaPin, and swI2Caddress to match your configuration
-import machine
-import SerialWombat_mp_i2c
-sclPin = 17  # Pins assume PICO on I2C0
-sdaPin = 16
-swI2Caddress = 0x6A
-i2c = machine.I2C(0,
-            scl=machine.Pin(sclPin),
-            sda=machine.Pin(sdaPin),
-            freq=100000,timeout = 50000)
-sw = SerialWombat_mp_i2c.SerialWombatChip_mp_i2c(i2c,swI2Caddress)
+import SerialWombat_interface
+sw = SerialWombat_interface.SerialWombatChipInstance(SW_ADDRESS)
 
 
-
-#Interface independent code starts here:
 
 import re
 
@@ -68,7 +57,7 @@ hexfilelist =  glob(".","*.hex")
 if (len(hexfilelist) == 0):
   print("No Hex file found")
   quit()
-  
+
 
 
 print(f"Bootloading {hexfilelist[0]}")
@@ -90,20 +79,20 @@ def parseline(l):
   if (x.group(3) == "00"):
     a = addressBase + int(x.group(2),16)
     d = [x.group(4)[i:i+2] for i in range(0, len(x.group(4)), 2)] #split group 4 into chunks of 2 chars
-   
+
     for res in d:
       data.append(int(res,16))
     return ([a,data])
   return([-1,[]])
 
 
- 
-mem = [0xFF] * 16384
+
+mem = bytearray(16384)
 
 l = hexfile.readline()
 
 while (l):
-    
+
     hexaddr, ldata = parseline(l)
     if  hexaddr < 0:
         l = hexfile.readline()
@@ -113,14 +102,14 @@ while (l):
         mem[hexaddr + offset] = ldata[offset]
         offset = offset + 1
     l = hexfile.readline()
-        
+
 #Set magic values to indicate complete bootload
 mem[0x3FFC] = 0x11
 mem[0x3FFD] = 0x01
 mem[0x3FFE] = 0x25
 mem[0x3FFF] = 0x20
 sw.begin()
-if (True):#sw.isLatestFirmware()):
+if (sw.isLatestFirmware()):
     print("Firmware is already the latest version.  Update?  Send capital 'Y' to update");
     yesno = input();
     if (yesno != 'Y'):
@@ -155,7 +144,7 @@ if (True):#sw.isLatestFirmware()):
     delay(5000);
 
     pageaddress = 0
- 
+
 
     while (pageaddress < 0x4000):
       data = [0xFF] * 64
@@ -164,18 +153,18 @@ if (True):#sw.isLatestFirmware()):
       print(f"Writing 0x{pageaddress:04x}  / 0x4000");
       sw.writeUserBuffer(0x00,data,64);
       sw.writeFlashRow(pageaddress + 0x08000000);
-      
+
       data = []
       pageaddress = pageaddress + 64
-              
+
 
     print("Bootload complete.  Calculating CRC...");
 
-       
+
     print("Setting Jump To App Flag")
     bootflag = [164,4,0,0,0,0,0,0]
     sw.sendPacket(bootflag)
-    
+
     print("Resetting")
     sw.hardwareReset();
     print();
