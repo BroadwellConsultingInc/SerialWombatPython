@@ -8,7 +8,6 @@ import serial
 ################################################
 
 sw_com_port = setYourComPortHere # example "COM6"
-ser = serial.Serial(sw_com_port,115200,timeout=0)
 
 
 class SerialWombatChip_cpy_serial(SerialWombat.SerialWombatChip):
@@ -60,4 +59,4 @@ class SerialWombatChip_cpy_serial(SerialWombat.SerialWombatChip):
             return -48,bytes("E00048UU",'utf-8')
 
 def SerialWombatChipInstance(address):
-    return SerialWombatChip_cpy_serial(ser,address)
+    return SerialWombatChip_cpy_serial(sw_com_port,address)
