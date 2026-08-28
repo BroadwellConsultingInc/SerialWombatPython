@@ -50,8 +50,8 @@ class ArduinoInputOutput ():
     PULLUP = 2
 
 # Firmware versions expected by this library revision.
-SW18AB_LATEST_FIRMWARE = 224
-SW08B_LATEST_FIRMWARE = 224
+SW18AB_LATEST_FIRMWARE = 225
+SW08B_LATEST_FIRMWARE = 225
 SW4B_LATEST_FIRMWARE = 203
 
 
@@ -278,6 +278,7 @@ class SerialWombatPinMode_t():
     PIN_MODE_BLINK = 40 #!< (40)
     PIN_MODE_SPI = 41 #!< (41)
     PIN_MODE_RANDOMBLINK = 42 #!< (42)
+    PIN_MODE_CHARLIEPLEX = 43 #!< (43)
     PIN_MODE_UNKNOWN = 255 #!< (0xFF)
 
 
@@ -369,6 +370,20 @@ class SerialWombatChip:
                 self.uniqueIdentifier[uniqueIdentifierLength] = (data >> 8) & 0xFF
                 uniqueIdentifierLength += 1
                 self.uniqueIdentifier[uniqueIdentifierLength] = (data >> 16) & 0xFF
+                uniqueIdentifierLength += 1
+        elif (self.isSW08()):
+            # CH32V003 unique identifier words at 0x1FFFF7E8 through 0x1FFFF7F0.
+            # Match the Arduino library byte order: least-significant byte first
+            # for each 32-bit word.
+            for address in range(0x1FFFF7E8, 0x1FFFF7F1, 4):
+                data = self.readFlashAddress(address)
+                self.uniqueIdentifier[uniqueIdentifierLength] = data & 0xFF
+                uniqueIdentifierLength += 1
+                self.uniqueIdentifier[uniqueIdentifierLength] = (data >> 8) & 0xFF
+                uniqueIdentifierLength += 1
+                self.uniqueIdentifier[uniqueIdentifierLength] = (data >> 16) & 0xFF
+                uniqueIdentifierLength += 1
+                self.uniqueIdentifier[uniqueIdentifierLength] = (data >> 24) & 0xFF
                 uniqueIdentifierLength += 1
 
 
@@ -1261,6 +1276,91 @@ class SerialWombat18ABOscillatorTuner:
                  # Running  sFast
                 tx = bytearray([ SerialWombatCommands.COMMAND_ADJUST_FREQUENCY]) + SW_LE16(0) +SW_LE16(1) + bytearray([0x55,0x55,0x55])
                 result,rx = self._sw.sendPacket(tx)         
+
+            self._lastMillis = m
+            self._lastFrames = frames
+
+
+"""!
+    @brief A class which tunes the oscillator on a CH32V003 based Serial Wombat 8B chip
+
+    This class is designed to be called periodically in the program main loop.  It compares
+    the 1mS execution frame count to the millis() function provided by the host.  When
+    at least 10 seconds of execution have occurred the class compares the counts and
+    adjusts the CH32V003 HSI oscillator trim value slightly slower or faster.
+    This can reduce the error in the Serial Wombat's nominal clock. Simply call update()
+    periodically and the class will take care of the rest.  Allow up to 10 calls at least
+    10 seconds apart each to reach optimal timing.
+"""
+class SerialWombat8BOscillatorTuner:
+    # CH32V003 RCC_CTLR low byte.  The Serial Wombat 8B firmware RAM read/write
+    # commands use 16-bit addresses for memory-mapped register access.
+    CH32V003_RCC_CTLR_LOW = 0x1000
+    CH32V003_HSITRIM_MASK = 0xF8
+    CH32V003_HSITRIM_SHIFT = 3
+
+    """!
+    @brief Class constructor for SerialWombat8BOscillatorTuner
+    @param serial_wombat_chip The Serial Wombat chip on which the oscillator will be tuned.
+    """
+    def __init__(self, serial_wombat_chip):
+        self._sw = serial_wombat_chip
+        self._lastMillis = 0
+        self._lastFrames = 0
+
+    def _readTrim(self):
+        return ((self._sw.readRamAddress(self.CH32V003_RCC_CTLR_LOW) &
+                 self.CH32V003_HSITRIM_MASK) >> self.CH32V003_HSITRIM_SHIFT)
+
+    def _writeTrim(self, trim):
+        rccCtlrLow = self._sw.readRamAddress(self.CH32V003_RCC_CTLR_LOW)
+        rccCtlrLow &= ~self.CH32V003_HSITRIM_MASK
+        rccCtlrLow |= ((trim & 0x1F) << self.CH32V003_HSITRIM_SHIFT)
+        self._sw.writeRamAddress(self.CH32V003_RCC_CTLR_LOW, rccCtlrLow)
+
+    """!
+    @brief Call periodically to tune the SW8B oscillator to reported millis.
+    """
+    def update(self):
+        m = millis()
+        if self._lastMillis == 0:
+            self._lastMillis = m
+            frames = self._sw.readPublicData(SerialWombatDataSource.SW_DATA_SOURCE_FRAMES_RUN_MSW)
+            frameslsb = self._sw.readPublicData(SerialWombatDataSource.SW_DATA_SOURCE_FRAMES_RUN_LSW)
+            if frames != self._sw.readPublicData(SerialWombatDataSource.SW_DATA_SOURCE_FRAMES_RUN_MSW):
+                frameslsb = self._sw.readPublicData(SerialWombatDataSource.SW_DATA_SOURCE_FRAMES_RUN_LSW)
+                frames = self._sw.readPublicData(SerialWombatDataSource.SW_DATA_SOURCE_FRAMES_RUN_MSW)
+            frames <<= 16
+            frames += frameslsb
+            self._lastFrames = frames
+        elif (m - self._lastMillis) < 10000:
+            pass
+        elif m < self._lastMillis:
+            # Has it been 47 days already?
+            self._lastMillis = 0
+        else:
+            diff = m - self._lastMillis
+
+            frames = self._sw.readPublicData(SerialWombatDataSource.SW_DATA_SOURCE_FRAMES_RUN_MSW)
+            frameslsb = self._sw.readPublicData(SerialWombatDataSource.SW_DATA_SOURCE_FRAMES_RUN_LSW)
+
+            if frames != self._sw.readPublicData(SerialWombatDataSource.SW_DATA_SOURCE_FRAMES_RUN_MSW):
+                frameslsb = self._sw.readPublicData(SerialWombatDataSource.SW_DATA_SOURCE_FRAMES_RUN_LSW)
+                frames = self._sw.readPublicData(SerialWombatDataSource.SW_DATA_SOURCE_FRAMES_RUN_MSW)
+            frames <<= 16
+            frames += frameslsb
+            framesDif = frames - self._lastFrames
+
+            if diff > framesDif:
+                # Running slow
+                trim = self._readTrim()
+                if trim < 31:
+                    self._writeTrim(trim + 1)
+            elif diff < framesDif:
+                # Running fast
+                trim = self._readTrim()
+                if trim > 0:
+                    self._writeTrim(trim - 1)
 
             self._lastMillis = m
             self._lastFrames = frames

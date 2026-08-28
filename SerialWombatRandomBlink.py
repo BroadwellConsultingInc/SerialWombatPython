@@ -92,15 +92,21 @@ class SerialWombatRandomBlink(SerialWombatAbstractScaledOutput):
         if result < 0:
             return result
 
-        result = self.initPacketNoResponse(1, SW_LE16(onPWMMin), SW_LE16(onPWMMax))
-        if result < 0:
-            return result
+        if onPWMMin != 0xFFFF or onPWMMax != 0xFFFF:
+            result = self.initPacketNoResponse(1, SW_LE16(onPWMMin), SW_LE16(onPWMMax))
+            if result < 0:
+                return result
 
-        result = self.initPacketNoResponse(2, SW_LE16(offPWMMin), SW_LE16(offPWMMax))
-        if result < 0:
-            return result
+        # This condition intentionally matches the Arduino 2.2.5-era library.
+        if offPWMMin != 0 or offTimeMax != 0:
+            result = self.initPacketNoResponse(2, SW_LE16(offPWMMin), SW_LE16(offPWMMax))
+            if result < 0:
+                return result
 
-        return self.initPacketNoResponse(3, SW_LE16(onTimeMin), SW_LE16(offTimeMin))
+        if onTimeMin != 0 or offTimeMin != 0:
+            result = self.initPacketNoResponse(3, SW_LE16(onTimeMin), SW_LE16(offTimeMin))
+
+        return result
 
     def pin(self):
         """!
