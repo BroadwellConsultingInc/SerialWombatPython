@@ -297,6 +297,11 @@ class SerialWombatTM1637(SerialWombatPin):
 	
 	"""
 	def write(self, data):
+		# As in Arduino, accept either one byte or a sequence of bytes.
+		if isinstance(data, str):
+			data = data.encode('ascii')
+		if not isinstance(data, int):
+			return self.writeBuffer(data, len(data))
 		tx = [
 			SerialWombat.SerialWombatCommands.CONFIGURE_PIN_MODE8, # Pin Set command
 			self._pin,
@@ -316,7 +321,7 @@ class SerialWombatTM1637(SerialWombatPin):
 	def writeBuffer(self,  buffer,  size):
 		initialSize = size
 		if (size > 6): # We can only display 6 characters.  Skip the first ones if more than 6
-			buffer += size - 6
+			buffer = buffer[size - 6:]
 			size = 6
 		if (size > 4):
 			tx = [208,# SerialWombat.SerialWombatCommands.CONFIGURE_PIN_MODE8, # Pin Set command
@@ -330,7 +335,7 @@ class SerialWombatTM1637(SerialWombatPin):
 			]
 			self._sw.sendPacket(tx)
 			size -= 4
-			buffer += 4
+			buffer = buffer[4:]
 
 		tx = [ 208,#SerialWombat.SerialWombatCommands.CONFIGURE_PIN_MODE8, # Pin Set command
                 self._pin,
@@ -347,3 +352,7 @@ class SerialWombatTM1637(SerialWombatPin):
 		return initialSize
 
 
+
+	def availableForWrite(self):
+		"""! @brief Match Arduino Print capacity; only the last six characters remain. """
+		return 100

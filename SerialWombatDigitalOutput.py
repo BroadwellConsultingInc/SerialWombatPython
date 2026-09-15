@@ -28,13 +28,15 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 
 import SerialWombat
 from SerialWombatPin import SerialWombatPin
+from SerialWombatAbstractScaledOutput import SerialWombatAbstractScaledOutput
 
 LOW = 0
 HIGH = 1
 
-class SerialWombatDigitalOutput_18AB(SerialWombatPin):
+class SerialWombatDigitalOutput_18AB(SerialWombatAbstractScaledOutput):
+    """! @brief Digital output with Scaled Output, timeout and endstop support. """
     def __init__(self, serial_wombat):
-        SerialWombatPin.__init__(self, serial_wombat)
+        SerialWombatAbstractScaledOutput.__init__(self, serial_wombat)
 
     def begin(self, pin, highLow = LOW, isOpenDrain = False):
         self._pin = pin

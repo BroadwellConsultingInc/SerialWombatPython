@@ -28,6 +28,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 #include <stdint.h>
 #include "SerialWombat.h"
 import SerialWombat
+from SerialWombatAbstractProcessedInput import SerialWombatAbstractProcessedInput
 from SerialWombatPin import SerialWombatPin
 from SerialWombat import SW_LE16
 from SerialWombat import SW_LE32
@@ -155,9 +156,11 @@ class SerialWombatQuadEnc (SerialWombatPin):
 
 
 
-class SerialWombatQuadEnc_18AB (SerialWombatQuadEnc):
+class SerialWombatQuadEnc_18AB (SerialWombatQuadEnc, SerialWombatAbstractProcessedInput):
+	"""! @brief Includes all Processed Input configuration and measurement methods. """
 	def __init__(self,serial_wombat):
 		SerialWombatQuadEnc.__init__(self, serial_wombat)
+		SerialWombatAbstractProcessedInput.__init__(self,serial_wombat)
 
 	def readFrequency(self):
 		tx = [205,self._pin,self._pinMode,0x55,0x55,0x55,0x55,0x55]
@@ -171,7 +174,7 @@ class SerialWombatQuadEnc_18AB (SerialWombatQuadEnc):
 		result,rx = self._sw.sendPacket(tx)
 		return result
 
-	def writeMinMaxIncrementTargetPin(self, minValue, maxValue, increment, targetPin):
+	def writeMinMaxIncrementTargetPin(self, minValue = 65535, maxValue = 0, increment = 1, targetPin = 255):
 		tx = bytearray([201,self._pin,self._pinMode]) + SW_LE16(increment) +bytearray([0x55,0x55,0x55])
 		result,rx = self._sw.sendPacket(tx)
 		if (result < 0):

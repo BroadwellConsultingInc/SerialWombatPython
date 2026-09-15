@@ -81,12 +81,20 @@ then call writeProcessedInputEnable(True) to enable processing.
 
 
 class SerialWombatAbstractProcessedInput (SerialWombatPin.SerialWombatPin):
+	# Arduino-compatible names; the existing OUTPUT_* and TRANSFORM_* names remain.
+	RAW = 0
+	FIRST_ORDER_FILTERED = 1
+	AVERAGE = 2
+	NONE = 0
+	SCALE_RANGE = 1
+	LINEAR_MXB = 2
 	"""!
 	@brief Constructor for the SerialWombatAbstractScaledOutput Class
 	
 	@param sw A reference to a previously declared SerialWombatPin to which the output is connected.
 	"""
 	def __init__(self,serial_wombat):
+		SerialWombatPin.SerialWombatPin.__init__(self, serial_wombat)
 		self._pisw = serial_wombat
 		self._pin = 0
 		self._swPinModeNumber = 0
@@ -109,6 +117,7 @@ class SerialWombatAbstractProcessedInput (SerialWombatPin.SerialWombatPin):
 		self.TRANSFORM_LINEAR_MXB = 2  #< Scale the input signal based on a linear mx+b equation
 
 	def abstractProcessedInputBegin(self,pin,pinModeNumber):
+		self._pinMode = pinModeNumber
 		self._swPinModeNumber = pinModeNumber
 		self._pin = pin
 		self._pisw = self._sw
@@ -127,7 +136,7 @@ class SerialWombatAbstractProcessedInput (SerialWombatPin.SerialWombatPin):
 
 		tx = [ SerialWombat.SerialWombatCommands.CONFIGURE_PIN_INPUTPROCESS,
 			self._pin,
-			self._swPinModeNumber,
+			self.swPinModeNumber(),
 			3,
 			 invertedInt,
 			0x55,0x55,0x55]
@@ -159,7 +168,7 @@ class SerialWombatAbstractProcessedInput (SerialWombatPin.SerialWombatPin):
 	def writeFirstOrderFilteringConstant(self, constant):
 		tx =bytearray( [ SerialWombat.SerialWombatCommands.CONFIGURE_PIN_INPUTPROCESS,
 			self._pin,
-			self._swPinModeNumber,
+			self.swPinModeNumber(),
 			11]) + SW_LE16(constant) + bytearray([0X55,0X55])
 		result,rx = self._pisw.sendPacket(tx)
 
@@ -178,7 +187,7 @@ class SerialWombatAbstractProcessedInput (SerialWombatPin.SerialWombatPin):
 	def writeAveragingNumberOfSamples(self, numberOfSamples):
 		tx = bytearray([ SerialWombat.SerialWombatCommands.CONFIGURE_PIN_INPUTPROCESS,
 			self._pin,
-			self._swPinModeNumber,
+			self.swPinModeNumber(),
 			1]) + SW_LE16(numberOfSamples) + bytearray([ 0x55,0x55])
 
 		result,rx = self._pisw.sendPacket(tx)
@@ -200,7 +209,7 @@ class SerialWombatAbstractProcessedInput (SerialWombatPin.SerialWombatPin):
 	def writeExcludeBelowAbove(self, low,  high):
 		tx = bytearray([ SerialWombat.SerialWombatCommands.CONFIGURE_PIN_INPUTPROCESS,
 			self._pin,
-			self._swPinModeNumber,
+			self.swPinModeNumber(),
 			2]) + SW_LE16(low) + SW_LE16(high)
 
 		result,rx = self._pisw.sendPacket(tx)
@@ -225,7 +234,7 @@ class SerialWombatAbstractProcessedInput (SerialWombatPin.SerialWombatPin):
 	def configureQueue(self, queue, period,  queueHighByte = True,  queueLowByte = True):
 		tx = bytearray([ SerialWombat.SerialWombatCommands.CONFIGURE_PIN_INPUTPROCESS,
 			self._pin,
-			self._swPinModeNumber,
+			self.swPinModeNumber(),
 			5]) + SW_LE16(queue.startIndex) + bytearray([ period, ((( queueHighByte) << 1) | queueLowByte)])
 		result,rx = self._pisw.sendPacket(tx)
 		return(result)
@@ -238,7 +247,7 @@ class SerialWombatAbstractProcessedInput (SerialWombatPin.SerialWombatPin):
 	def configureOutputValue(self,outputValue):
 		tx = [ SerialWombat.SerialWombatCommands.CONFIGURE_PIN_INPUTPROCESS,
 			self._pin,
-			self._swPinModeNumber,
+			self.swPinModeNumber(),
 			4,
 			outputValue,
 			0x55,0x55,0x55]
@@ -265,7 +274,7 @@ class SerialWombatAbstractProcessedInput (SerialWombatPin.SerialWombatPin):
 	def writeTransformScaleRange(self, min,  max):
 		tx = bytearray([ SerialWombat.SerialWombatCommands.CONFIGURE_PIN_INPUTPROCESS,
 			self._pin,
-			self._swPinModeNumber,
+			self.swPinModeNumber(),
 			6]) + SW_LE16(min)+ SW_LE16(max)
 		result,rx = self._pisw.sendPacket(tx)
 		return(result)
@@ -286,7 +295,7 @@ class SerialWombatAbstractProcessedInput (SerialWombatPin.SerialWombatPin):
 	def writeTransformLinearMXB(self,m, b):
 		tx = bytearray([ SerialWombat.SerialWombatCommands.CONFIGURE_PIN_INPUTPROCESS,
 			self._pin,
-			self._swPinModeNumber,
+			self.swPinModeNumber(),
 			7]) + SW_LE32(m)
 
 		result,rx = self._pisw.sendPacket(tx)
@@ -296,7 +305,7 @@ class SerialWombatAbstractProcessedInput (SerialWombatPin.SerialWombatPin):
 
 		tx2 = bytearray([ SerialWombat.SerialWombatCommands.CONFIGURE_PIN_INPUTPROCESS,
 			self._pin,
-			self._swPinModeNumber,
+			self.swPinModeNumber(),
 			8]) + SW_LE32(b)
 		result,rx = self._pisw.sendPacket(tx2)
 
@@ -319,11 +328,12 @@ class SerialWombatAbstractProcessedInput (SerialWombatPin.SerialWombatPin):
 						positiveMaxIndex,#!< Values more positive than this will increment the output value by maxIncrement per sample. 
 				midIncrement,  #!< forms a line for scaling between 0 and midIncrement for values between negative or positive deadzone and negative or positive MidIndex
 				maxIncrement,  #!< forms a line for scaling between midIncrement and maxIncrement for values between negative or positive midIncrement and negative or positive maxIncrement
-				initialValue) : #!< intial integrator value
+				initialValue, #!< intial integrator value
+				updateFrequencyMask = 0): #!< Integrate when frame counter AND mask is zero.
 			
 		tx = bytearray( [ SerialWombat.SerialWombatCommands.CONFIGURE_PIN_INPUTPROCESS,
 			self._pin,
-			self._swPinModeNumber,
+			self.swPinModeNumber(),
 				12]) +  SW_LE16(negativeMaxIndex) +  SW_LE16(negativeMidIndex)
                 
 		result,rx  = self._pisw.sendPacket(tx)
@@ -333,7 +343,7 @@ class SerialWombatAbstractProcessedInput (SerialWombatPin.SerialWombatPin):
 
 		tx = bytearray( [ SerialWombat.SerialWombatCommands.CONFIGURE_PIN_INPUTPROCESS,
 		self._pin,
-		self._swPinModeNumber,
+		self.swPinModeNumber(),
 			13]) +                 SW_LE16(negativeDeadZone) +                 SW_LE16(positiveDeadZone)
 			
 		result,rx = self._pisw.sendPacket(tx)
@@ -342,7 +352,7 @@ class SerialWombatAbstractProcessedInput (SerialWombatPin.SerialWombatPin):
 			return (result)
 		tx = bytearray([SerialWombat.SerialWombatCommands.CONFIGURE_PIN_INPUTPROCESS,
 		self._pin,
-		self._swPinModeNumber,
+		self.swPinModeNumber(),
 			14]) +                 SW_LE16(positiveMidIndex) +           SW_LE16(positiveMaxIndex)
 
 		result,rx = self._pisw.sendPacket(tx)
@@ -352,7 +362,7 @@ class SerialWombatAbstractProcessedInput (SerialWombatPin.SerialWombatPin):
 
 		tx = bytearray( [ SerialWombat.SerialWombatCommands.CONFIGURE_PIN_INPUTPROCESS,
 		self._pin,
-		self._swPinModeNumber,
+		self.swPinModeNumber(),
                 15]) +  SW_LE16(initialValue) + bytearray([ 0,0 ])
 		result,rx = self._pisw.sendPacket(tx)
 		if (result < 0):
@@ -360,12 +370,17 @@ class SerialWombatAbstractProcessedInput (SerialWombatPin.SerialWombatPin):
                 
 		tx = bytearray( [ SerialWombat.SerialWombatCommands.CONFIGURE_PIN_INPUTPROCESS,
 		self._pin,
-		self._swPinModeNumber,
+		self.swPinModeNumber(),
                 16]) +   SW_LE16(midIncrement) +                 SW_LE16(maxIncrement)
                 
 		result,rx = self._pisw.sendPacket(tx)
 
-		return (result)
+		if result < 0:
+			return result
+		tx = [SerialWombat.SerialWombatCommands.CONFIGURE_PIN_INPUTPROCESS,
+		      self._pin, self.swPinModeNumber(), 17, updateFrequencyMask, 0, 0, 0]
+		result, rx = self._pisw.sendPacket(tx)
+		return result
 
 	"""!
 	@brief Enables or disables all input processing functions
@@ -374,7 +389,7 @@ class SerialWombatAbstractProcessedInput (SerialWombatPin.SerialWombatPin):
 	def writeProcessedInputEnable(self, enabled):
 		tx = [ SerialWombat.SerialWombatCommands.CONFIGURE_PIN_INPUTPROCESS,
 			self._pin,
-			self._swPinModeNumber,
+			self.swPinModeNumber(),
 			0,
 			enabled,
 			0x55,0x55,0x55]
@@ -395,7 +410,7 @@ class SerialWombatAbstractProcessedInput (SerialWombatPin.SerialWombatPin):
 			resetAfterReadInt = 1
 		tx = [ SerialWombat.SerialWombatCommands.CONFIGURE_PIN_INPUTPROCESS,
 			self._pin,
-			self._swPinModeNumber,
+			self.swPinModeNumber(),
 			9,
 			resetAfterReadInt,
 			0x55,0x55,0x55]
@@ -417,7 +432,7 @@ class SerialWombatAbstractProcessedInput (SerialWombatPin.SerialWombatPin):
 			resetAfterReadInt = 1
 		tx = [ SerialWombat.SerialWombatCommands.CONFIGURE_PIN_INPUTPROCESS,
 			self._pin,
-			self._swPinModeNumber,
+			self.swPinModeNumber(),
 			10,
 			resetAfterReadInt,
 			0x55,0x55,0x55]
@@ -436,7 +451,7 @@ class SerialWombatAbstractProcessedInput (SerialWombatPin.SerialWombatPin):
 	def readAverage(self):
 		tx = [ SerialWombat.SerialWombatCommands.CONFIGURE_PIN_INPUTPROCESS,
 			self._pin,
-			self._swPinModeNumber,
+			self.swPinModeNumber(),
 			11,
 			0x55,0x55,0x55,0x55]
 		result,rx =  self._pisw.sendPacket(tx)
@@ -452,7 +467,7 @@ class SerialWombatAbstractProcessedInput (SerialWombatPin.SerialWombatPin):
 	def readFiltered(self):
 		tx = [ SerialWombat.SerialWombatCommands.CONFIGURE_PIN_INPUTPROCESS,
 			self._pin,
-			self._swPinModeNumber,
+			self.swPinModeNumber(),
 			11,
 			0x55,0x55,0x55,0x55]
 		result,rx = self._pisw.sendPacket(tx)

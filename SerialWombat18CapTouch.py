@@ -24,7 +24,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 """
 
 import SerialWombat
+from SerialWombatAbstractProcessedInput import SerialWombatAbstractProcessedInput
 from SerialWombatPin import SerialWombatPin
+from SerialWombatAbstractButton import SerialWombatAbstractButton
 from SerialWombat import SW_LE32
 from SerialWombat import SW_LE16
 
@@ -83,10 +85,10 @@ https://youtu.be/c4B0_DRVHs0
 @endhtmlonly
 
 """
-class SerialWombat18CapTouch(SerialWombatPin):
+class SerialWombat18CapTouch(SerialWombatAbstractProcessedInput, SerialWombatAbstractButton):
 
 	def __init__(self,serial_wombat):
-		self._sw = serial_wombat
+		SerialWombatAbstractProcessedInput.__init__(self,serial_wombat)
 		self._trueOutput = 1
 		self._falseOutput = 1
 		self.transitions = 0
@@ -212,8 +214,13 @@ class SerialWombat18CapTouch(SerialWombatPin):
 	
 	@return TRUE or FALSE, current status of debounced input
 	"""
-	def readTransitionsState(self ):
-		tx = [ 204,self._pin,22,1,0x55,0x55,0x55,0x55 ]
+	def readTransitionsState(self, resetTransitionCounts = True):
+		"""!
+		@brief Read state and update transitions, optionally preserving the chip's count.
+		@param resetTransitionCounts True clears the firmware count after reading.
+		@return Current logical button state.
+		"""
+		tx = [204, self._pin, 22, resetTransitionCounts, 0x55, 0x55, 0x55, 0x55]
 		result, rx = self._sw.sendPacket(tx)
-		self.transitions = (256 * rx[5] + rx[4])
-		return (rx[3] > 0)
+		self.transitions = rx[4] + 256 * rx[5]
+		return rx[3] > 0

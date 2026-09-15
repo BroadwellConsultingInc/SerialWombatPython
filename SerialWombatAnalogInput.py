@@ -24,6 +24,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 """
 
 import SerialWombatPin
+from SerialWombatAbstractProcessedInput import SerialWombatAbstractProcessedInput
 from SerialWombat import SerialWombatPinMode_t
 from SerialWombat import SW_LE16
 
@@ -294,9 +295,11 @@ public:
 
 
 
-class SerialWombatAnalogInput_18AB(SerialWombatAnalogInput):
+class SerialWombatAnalogInput_18AB(SerialWombatAnalogInput, SerialWombatAbstractProcessedInput):
+	"""! @brief Includes all Processed Input configuration and measurement methods. """
 	def __init__(self,serial_wombat):
 		SerialWombatAnalogInput.__init__(self,serial_wombat)
+		SerialWombatAbstractProcessedInput.__init__(self,serial_wombat)
 
 	def pin(self):
 		return self._pin

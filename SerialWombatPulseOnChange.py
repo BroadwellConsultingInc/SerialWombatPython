@@ -315,3 +315,33 @@ class SerialWombatPulseOnChange( SerialWombatPin):
 			return result
 		return self.setEntryMode(entryID, sourcePin, 15)
 
+
+	def setEntryOnPinGTPin(self, entryID, sourcePin, secondPin):
+		"""!
+		@brief Arduino-compatible name for a condition: greater than another pin.
+		@param entryID Condition table entry, 0 through 7.
+		@param sourcePin Pin/public data source to monitor.
+		@param secondPin Comparison pin/public data source.
+		@return Nonnegative result on success or a negative error code.
+		"""
+		return self.setEntryOnPinsGreaterThan(entryID, sourcePin, secondPin)
+
+	def setEntryOnPinLTPin(self, entryID, sourcePin, secondPin):
+		"""!
+		@brief Arduino-compatible name for a condition: less than another pin.
+		@param entryID Condition table entry, 0 through 7.
+		@param sourcePin Pin/public data source to monitor.
+		@param secondPin Comparison pin/public data source.
+		@return Nonnegative result on success or a negative error code.
+		"""
+		return self.setEntryOnPinsLessThan(entryID, sourcePin, secondPin)
+
+	def setEntryOnPinCrossValue(self, entryID, sourcePin, value):
+		"""!
+		@brief Arduino-compatible name for a condition: crossing a fixed threshold.
+		@param entryID Condition table entry, 0 through 7.
+		@param sourcePin Pin/public data source to monitor.
+		@param value Comparison threshold.
+		@return Nonnegative result on success or a negative error code.
+		"""
+		return self.setEntryOnPinCross(entryID, sourcePin, value)

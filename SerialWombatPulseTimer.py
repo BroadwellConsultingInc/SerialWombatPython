@@ -83,6 +83,10 @@ class SerialWombatPulseTimer(SerialWombatPin.SerialWombatPin):
 	"""
 	def __init__(self,serial_wombat):
 		self._sw = serial_wombat
+		self.HighCounts = 0
+		self.LowCounts = 0
+		self.Pulses = 0
+		self.MeasurementOverflowOccurred = False
 
 	"""!	
 	@brief Initialization routine for SerialWombatPulseTimer
@@ -96,6 +100,7 @@ class SerialWombatPulseTimer(SerialWombatPin.SerialWombatPin):
 		self._pinMode = SerialWombatPinMode_t.PIN_MODE_PULSETIMER
 		tx = [ 200,self._pin,self._pinMode,pullUpEnabled,units,0x55,0x55,0x55 ]
 		count,rx = self._sw.sendPacket(tx)
+		return count
 
 	"""!
 	@brief Retreive the latest values for HighCounts, LowCounts, Pulses, and MeasurementOverflowOccured
@@ -107,7 +112,7 @@ class SerialWombatPulseTimer(SerialWombatPin.SerialWombatPin):
 		tx = [ 202,self._pin,self._pinMode,0x55,0x55,0x55,0x55,0x55 ]
 		count,rx = self._sw.sendPacket(tx)
 		self.Pulses = rx[5] + 256 * rx[6]
-		MeasurementOverflowOccurred = rx[7]
+		self.MeasurementOverflowOccurred = rx[7]
 
 	"""!
 	@brief Retreive the High and Low counts from the Serial Wombat chip in a single transaction
@@ -128,7 +133,6 @@ class SerialWombatPulseTimer(SerialWombatPin.SerialWombatPin):
 	It it not guaranteed which is the most recent.
 	"""
 	def refreshHighCountsPulses(self):
-		self.refreshHighCountsLowCounts()
 		tx = [ 202,self._pin,self._pinMode,0x55,0x55,0x55,0x55,0x55 ]
 		count,rx = self._sw.sendPacket(tx)
 		self.HighCounts = rx[3] + 256 * rx[4]
@@ -195,6 +199,7 @@ This class adds functionality that is specific to the SW18AB firmware in additio
 to generic SerialWombatPulseTimer functionality avaialble on all Serial Wombat chips
 """
 class SerialWombatPulseTimer_18AB(SerialWombatPulseTimer, SerialWombatAbstractProcessedInput):
+
 	
 	"""!
 	@brief constructor for SerialWombatPulseTimer_18AB

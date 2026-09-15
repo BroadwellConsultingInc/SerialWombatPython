@@ -50,8 +50,8 @@ class ArduinoInputOutput ():
     PULLUP = 2
 
 # Firmware versions expected by this library revision.
-SW18AB_LATEST_FIRMWARE = 225
-SW08B_LATEST_FIRMWARE = 225
+SW18AB_LATEST_FIRMWARE = 226
+SW08B_LATEST_FIRMWARE = 226
 SW4B_LATEST_FIRMWARE = 203
 
 
@@ -318,6 +318,8 @@ class SerialWombatChip:
         self.address = 0
         self.sendReadyTime = 0
         self.uniqueIdentifier = bytearray(16)
+        self.uniqueIdentifierLength = 0
+        self.errorHandler = None
 
     def configureDigitalPin(self,pin, highLow):
         tx = [200,pin,0,0,0,0,0,0x55]
@@ -351,7 +353,7 @@ class SerialWombatChip:
 
     def readUniqueIdentifier(self):
         uniqueIdentifierLength = 0
-        if (self.version[0] == 'S' and self.version[1] == '0' and self.version[2] == '4'):
+        if (self.isSW04()):
                     #16F15214
             for address in range(0x8100,0x8109,1):
         
@@ -385,11 +387,10 @@ class SerialWombatChip:
                 uniqueIdentifierLength += 1
                 self.uniqueIdentifier[uniqueIdentifierLength] = (data >> 24) & 0xFF
                 uniqueIdentifierLength += 1
-
-
+        self.uniqueIdentifierLength = uniqueIdentifierLength
 
     def readDeviceIdentifier(self):
-        if (self.version[0] == 'S' and self.version[1] == '0' and self.version[2] == '4'):
+        if (self.isSW04()):
              #16F15214
                     
             data = self.readFlashAddress(0x8006)
@@ -448,7 +449,11 @@ class SerialWombatChip:
         while (retry > 0):
             result,rx = self.sendReceivePacketHardware(tx)
             if (rx[0] == ord('E')):
-                return (-1 * self.returnErrorCode(rx),rx)
+                self.lastErrorCode = self.returnErrorCode(rx)
+                self.errorCount += 1
+                if self.errorHandler is not None:
+                    self.errorHandler(self.lastErrorCode, self)
+                return (-self.lastErrorCode,rx)
 
             success = True
             for i in range(0,startBytesToMatch):
@@ -818,7 +823,7 @@ class SerialWombatChip:
     def readFlashAddress(self,address):
         tx = bytearray([ 0xA1]) + SW_LE32(address) + bytearray([0x55,0x55,0x55])
         result,rx = self.sendPacket(tx)
-        if (result <= 0):
+        if (result < 0):
             return (0)
         return((rx[4]) + ((rx[5]) <<8) + ((rx[6]) <<16) + ((rx[7]) <<24))
 
@@ -883,7 +888,33 @@ class SerialWombatChip:
         else:
             return (v == SW4B_LATEST_FIRMWARE)
 
-    def isPinModeSupported(self, pinMode):
+    def isConfiguredWithStartupCommands(self):
+        """!
+        @brief Check whether the SW8B startup command area contains programmed data.
+
+        Read all 24 eight-byte command slots at 0x08003F00 through 0x08003FBF
+        as 48 little-endian words, matching the attached Arduino implementation.
+        Any word other than 0xFFFFFFFF means commands are configured.
+
+        @return True if a programmed word is found; False otherwise.
+        """
+        if self.isSW08():
+            for address in range(0x08003F00, 0x08003FC0, 4):
+                if self.readFlashAddress(address) != 0xFFFFFFFF:
+                    return True
+            return False
+        elif self.isSW18():
+            # TODO: Implement startup command detection for Serial Wombat 18AB.
+            return False
+        return False
+
+    def isPinModeSupported(self, pinMode, supressErrorReporting = True):
+        """!
+        @brief Check firmware support for a pin mode.
+        @param pinMode Pin mode number to test.
+        @param supressErrorReporting Suppress the registered handler for this query.
+        @return False for unsupported mode; otherwise matches the Arduino result.
+        """
         if (self.isSW04()):
             return pinMode in (SerialWombatPinMode_t.PIN_MODE_DIGITALIO,
                                SerialWombatPinMode_t.PIN_MODE_ANALOGINPUT,
@@ -896,7 +927,13 @@ class SerialWombatChip:
                                SerialWombatPinMode_t.PIN_MODE_PULSETIMER,
                                SerialWombatPinMode_t.PIN_MODE_PROTECTED_OUTPUT)
         tx = [SerialWombatCommands.CONFIGURE_CHANNEL_MODE_CHECK_MODE_SUPPORTED, 1, pinMode, 0x55, 0x55, 0x55, 0x55, 0x55]
-        result, rx = self.sendPacket(tx)
+        handler = self.errorHandler
+        if supressErrorReporting:
+            self.errorHandler = None
+        try:
+            result, rx = self.sendPacket(tx)
+        finally:
+            self.errorHandler = handler
         return (-result != 3)
 
     def sendPacketNoResponse(self, tx):
@@ -956,7 +993,11 @@ class SerialWombatChip:
 	@param number of bytes to load
 	@return Number of bytes written or error code.
     """
-    def writeUserBuffer(self,address,buf,count):
+    def writeUserBuffer(self,address,buf,count = None):
+        if isinstance(buf, str):
+            buf = buf.encode('ascii')
+        if count is None:
+            count = len(buf)
         bytesToSend = 0
         bytesSent = 0
         if (count == 0):
@@ -974,7 +1015,7 @@ class SerialWombatChip:
             tx[4+i] = buf[i]
         result,rx = self.sendPacket(tx)
         if (result < 0):
-            return (count)
+            return (result)
         bytesSent = bytesToSend
 
         while (count >= 7):
@@ -983,7 +1024,7 @@ class SerialWombatChip:
                 tx[i+1] = buf[bytesSent + i]
             result,rx = self.sendPacket(tx)           
             if (result < 0):
-                return count
+                return result
             count -= 7
             bytesSent += 7
 
@@ -1000,7 +1041,7 @@ class SerialWombatChip:
                 tx[4+i] = buf[i + bytesSent]
             result,rx = self.sendPacket(tx)
             if (result < 0):
-                return(count)
+                return(result)
             bytesSent += bytesToSend
 
         return bytesSent
@@ -1049,8 +1090,8 @@ class SerialWombatChip:
     Calling this command discards any prior unwritten capture commands.
     """
     def startStartupCommandCapture(self):
-        tx = { 0xB3,0,'C', 'A', 'P','T','U','R' };
-        result,rx =  self.sendPacket(tx)
+        tx = bytearray([0xB3, 0]) + bytearray(b'CAPTUR')
+        result, rx = self.sendPacket(tx)
         return result
 
     """!
@@ -1058,8 +1099,8 @@ class SerialWombatChip:
     @return 0 or positive for success or negative error code
     """
     def stopStartupCommandCapture(self):
-        tx = [ 0xB3,1,'C', 'A', 'P','T','U','R' ]
-        result,rx = self.sendPacket(tx)
+        tx = bytearray([0xB3, 1]) + bytearray(b'CAPTUR')
+        result, rx = self.sendPacket(tx)
         return result
 
 
@@ -1075,8 +1116,8 @@ class SerialWombatChip:
     will be an issue (assuming the exact same initalization sequence occurs each time).  
     """
     def writeStartupCommandCapture(self):
-        tx = [ 0xB3,2,'C', 'A', 'P','T','U','R' ]
-        result,rx = self.sendPacket(tx);
+        tx = bytearray([0xB3, 2]) + bytearray(b'CAPTUR')
+        result, rx = self.sendPacket(tx)
         return result
 
     """!
@@ -1144,26 +1185,54 @@ class SerialWombatChip:
 				return(0);  // Didn't find one.
 	}
 """
+    @staticmethod
+    def find(chipFactory, keepTrying = False):
+        """!
+        @brief Find the first Serial Wombat on I2C addresses 0x60 through 0x6F.
+
+        Python has no global Arduino Wire object.  Supply an I2C chip factory,
+        for example SerialWombatChipInstance from the selected I2C interface.
+        The factory receives an address and returns a SerialWombatChip adapter.
+        Serial/direct-UART adapters are not suitable for an I2C address scan.
+
+        @param chipFactory Callable receiving an I2C address.
+        @param keepTrying Repeat scans until a chip is found if True.
+        @return First responding Serial Wombat address, or 0 if none is found.
+        """
+        while True:
+            for address in range(0x60, 0x70):
+                try:
+                    chip = chipFactory(address)
+                    result, rx = chip.sendReceivePacketHardware(
+                        bytearray([ord('V'), 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55]))
+                    if (result >= 0 and len(rx) == 8 and rx[0] == ord('V')
+                            and rx[1] in (ord('S'), ord('B'))):
+                        return address
+                except OSError:
+                    # No device at this address; continue the I2C scan.
+                    pass
+            if not keepTrying:
+                return 0
+            delay(0)
+
     """!
     @brief Returns the last Serial Wombat command that produced a protocol error
     
-    @return Returns the last error code and rronious command
-    @param cmd pointer to a uint8_t [8] array into which the error command will be copied
+    @return Tuple containing the last error code and the eight-byte command.
     """
     def readLastErrorCommand(self):
-        tx = [ SerialWombatCommands.COMMAND_READ_LAST_ERROR_PACKET, 0,0x55,0x55,0x55,0x55,0x55,0x55]
-        result,rx = self.sendPacket(tx)
+        tx = [SerialWombatCommands.COMMAND_READ_LAST_ERROR_PACKET,
+              0, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55]
+        result, rx = self.sendPacket(tx)
         cmd = bytearray()
-        if (result >= 0):
-            for  i in range(1,8):
-                cmd.add(rx[i])
-        else:
-            return (self.lastErrorCode,cmd)
+        if result < 0:
+            return self.lastErrorCode, cmd
+        cmd += bytearray(rx[1:8])
         tx[1] = 7
-        result,rx = self.sendPacket(tx)
-        if (result >= 0):
-            cmd.add( rx[1])
-        return(self.lastErrorCode.cmd)
+        result, rx = self.sendPacket(tx)
+        if result >= 0:
+            cmd.append(rx[1])
+        return self.lastErrorCode, cmd
 
 
     def registerErrorHandler(self, handler):
@@ -1175,7 +1244,7 @@ class SerialWombatChip:
     communicationErrorRetries = 5
 
     def echo(self, data,  count = 7):
-        tx = bytes("!UUUUUUU",'utf-8')
+        tx = bytearray(b"!UUUUUUU")
         for i in range(count):
             tx[i + 1] = data[i]
         result, rx = self.sendPacket(tx)
@@ -1203,7 +1272,7 @@ class SerialWombatChip:
             for i in range(32):
                 val = self.readFlashAddress(0x2A020 + i * 2) ;
                 if ((val & 0xFF) != 0xFF):
-                    data.add(val & 0xFF)
+                    data.append(val & 0xFF)
                 else:
                     return (data)
         return data 
@@ -1370,3 +1439,25 @@ End of cross platform code synchronization.  Random string to help the compare t
 asdkj38vjn1nasdnvuwlamafdjiivnowalskive
 """
 
+
+
+def SerialWombatSerialErrorHandlerBrief(error, sw):
+    """!
+    @brief Print a communication error and the command reported by the chip.
+    @param error Positive Serial Wombat error number.
+    @param sw Chip reporting the error.
+    """
+    handler = sw.errorHandler
+    sw.errorHandler = None
+    try:
+        result, command = sw.readLastErrorCommand()
+    finally:
+        sw.errorHandler = handler
+    print("Comm Error on SW at addr 0x%02X Error code %d Error count %d Command: %s" %
+          (sw.address, error, sw.errorCount,
+           ' '.join('0x%02X' % value for value in command)))
+
+
+class SerialWombat(SerialWombatChip):
+    """! @brief Deprecated Arduino-compatible class name; use SerialWombatChip. """
+    pass

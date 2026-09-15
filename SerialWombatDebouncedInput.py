@@ -28,6 +28,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 #include "limits.h"
 import SerialWombat
 from SerialWombatPin import SerialWombatPin
+from SerialWombatAbstractButton import SerialWombatAbstractButton
 from SerialWombat import SW_LE32
 from SerialWombat import SW_LE16
 #from enum import IntEnum
@@ -77,9 +78,10 @@ additional hardware.
 See also the SerialWombatButtonCounter class which can run on top of this one.
 
 """
-class SerialWombatDebouncedInput( SerialWombatPin):
+class SerialWombatDebouncedInput(SerialWombatPin, SerialWombatAbstractButton):
 	def __init__(self,serial_wombat):
 		self._sw = serial_wombat
+		self._pinMode = SerialWombat.SerialWombatPinMode_t.PIN_MODE_DEBOUNCE
 		self.transitions = 0
 
 	"""!
@@ -98,6 +100,77 @@ class SerialWombatDebouncedInput( SerialWombatPin):
                     10])
 		tx += SW_LE16(debounce_mS)
 		tx += bytearray([invert,0,usePullUp])
+		result, rx = self._sw.sendPacket(tx)
+		return result
+
+	"""!
+	@brief Configure the maximum time between releases for double click detection
+
+	A double click is recognized when two releases occur within this period and
+	no third press occurs during the following period.  The firmware waits for
+	the following period to expire before incrementing the double click count.
+
+	Setting the period to 0 disables double click detection.  Calling this method
+	also clears any double click sequence currently in progress.
+
+	@param doubleClickPeriod_mS double click timing period in mS
+	@return The result returned by SerialWombatChip.sendPacket()
+	"""
+	def setDoubleClickPeriod(self,doubleClickPeriod_mS):
+		tx = bytearray([202,self._pin,10])
+		tx += SW_LE16(doubleClickPeriod_mS)
+		tx += bytearray([0x55,0x55,0x55])
+		result, rx = self._sw.sendPacket(tx)
+		return result
+
+	"""!
+	@brief Configure another Serial Wombat pin to receive values on button events
+
+	The output pin's public data buffer is written with transitionOutputValue
+	whenever a debounced transition occurs.  If a double click is subsequently
+	recognized, the output pin is written with doubleClickOutputValue.
+
+	Use an output pin value of 255 to disable this feature.
+
+	@param outputPin Serial Wombat pin whose public data buffer will be written
+	@param transitionOutputValue Value written when a debounced transition occurs
+	@param doubleClickOutputValue Value written when a double click is recognized
+	@return The result returned by SerialWombatChip.sendPacket()
+	"""
+	def setOutputPin(self,outputPin, transitionOutputValue, doubleClickOutputValue):
+		tx = bytearray([203,self._pin,10,outputPin])
+		tx += SW_LE16(transitionOutputValue)
+		tx += SW_LE16(doubleClickOutputValue)
+		result, rx = self._sw.sendPacket(tx)
+		return result
+
+	"""!
+	@brief Read the number of double clicks detected by the firmware
+
+	@param resetDoubleClickCount If true, reset the firmware double click count after reading it
+	@return Number of double clicks currently accumulated by the firmware
+	"""
+	def readDoubleClickCount(self,resetDoubleClickCount = True):
+		tx = [204,self._pin,10,resetDoubleClickCount,0x55,0x55,0x55,0x55]
+		result, rx = self._sw.sendPacket(tx)
+		return (256 * rx[4] + rx[3])
+
+	"""!
+	@brief Enable or disable toggle-switch simulation in the pin's public data
+
+	When enabled, the public data output toggles between 0 and 65535 after each
+	complete debounced press/release cycle.  This command also sets the firmware
+	transition counter.  A transitionCount of 0 starts the toggle output low; a
+	transitionCount of 2 starts it high.
+
+	@param enabled TRUE to enable toggle simulation, FALSE for normal debounced output
+	@param transitionCount Value loaded into the firmware transition counter
+	@return The result returned by SerialWombatChip.sendPacket()
+	"""
+	def setToggleSimulation(self,enabled, transitionCount = 0):
+		tx = bytearray([205,self._pin,10,enabled])
+		tx += SW_LE16(transitionCount)
+		tx += bytearray([0x55,0x55])
 		result, rx = self._sw.sendPacket(tx)
 		return result
 
@@ -137,7 +210,7 @@ class SerialWombatDebouncedInput( SerialWombatPin):
 	"""
 	def readDurationInFalseState_mS(self):
 		tx = [ 201,self._pin,10,1,0x55,0x55,0x55,0x55 ]
-		result, rx = self._sw.sendPacket(tx, rx)
+		result, rx = self._sw.sendPacket(tx)
 
 		self.transitions += (256 * rx[5] + rx[4])
 
@@ -155,11 +228,16 @@ class SerialWombatDebouncedInput( SerialWombatPin):
 	
 	@return TRUE or FALSE, current status of debounced input
 	"""
-	def readTransitionsState(self):
-		tx = [ 201,self._pin,10,1,0x55,0x55,0x55,0x55 ]
+	def readTransitionsState(self, resetTransitionCounts = True):
+		"""!
+		@brief Read state and update transitions, optionally preserving the chip's count.
+		@param resetTransitionCounts True clears the firmware count after reading.
+		@return Current logical button state.
+		"""
+		tx = [201, self._pin, 10, resetTransitionCounts, 0x55, 0x55, 0x55, 0x55]
 		result, rx = self._sw.sendPacket(tx)
-		self.transitions = (256 * rx[5] + rx[4])
-		return (rx[3] > 0)
+		self.transitions = rx[4] + 256 * rx[5]
+		return rx[3] > 0
 
 	
 

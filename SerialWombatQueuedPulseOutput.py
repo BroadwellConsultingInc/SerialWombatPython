@@ -89,12 +89,13 @@ class SerialWombatQueuedPulseOutput ( SerialWombatPin ):
 	/// @brief Add a pulse or two pulses to the queue
 	/// @param  firstPulse A number from 1 to 32767 logical ored with 0x8000 or 0x0000 to indicate a high or low pulse of a given duration (controlled by units in begin command).  0 indicates do nothing.  
 	/// @param  secondPulse A number from 1 to 32767 logical ored with 0x8000 or 0x0000 to indicate a high or low pulse of a given duration (controlled by units in begin command).  0 indicates do nothing.
+	/// @param emptyQueueFirst True clears the queue before adding these pulses.
 	/// @return number of pulses successfully queued or a negative number if an error occured.
 		"""
-	def queuePulses(self, firstPulse,  secondPulse = 0):
+	def queuePulses(self, firstPulse,  secondPulse = 0, emptyQueueFirst = False):
 		tx = bytearray([ 201,
 		self._pin,
-		self._pinMode]) + 		SW_LE16(firstPulse) + 		SW_LE16(secondPulse) + bytearray([0x55])
+		self._pinMode]) + 		SW_LE16(firstPulse) + 		SW_LE16(secondPulse) + bytearray([0x01 if emptyQueueFirst else 0x55])
 		result,rx = self._sw.sendPacket(tx)
 		if (result < 0):
 			return (result)
@@ -116,15 +117,17 @@ class SerialWombatQueuedPulseOutput ( SerialWombatPin ):
 		return (result)
 
 	def queueEntriesFilled(self):
-		tx = [203,self._pin,self._pinMode,0x55,0x55,0x55,0x55,0x55]
-		result,rx = self._sw.sendPacket(tx)
-		if (result < 0):
+		"""! @brief Read queue occupancy without adding pulses. @return Count or error. """
+		tx = [201, self._pin, self._pinMode, 0, 0, 0, 0, 0x55]
+		result, rx = self._sw.sendPacket(tx)
+		if result < 0:
 			return result
-		return rx[3] + 256 * rx[4]
+		return rx[4]
 
 	def queueEntriesFree(self):
-		tx = [204,self._pin,self._pinMode,0x55,0x55,0x55,0x55,0x55]
-		result,rx = self._sw.sendPacket(tx)
-		if (result < 0):
+		"""! @brief Read queue occupancy without adding pulses. @return Count or error. """
+		tx = [201, self._pin, self._pinMode, 0, 0, 0, 0, 0x55]
+		result, rx = self._sw.sendPacket(tx)
+		if result < 0:
 			return result
-		return rx[3] + 256 * rx[4]
+		return rx[5]
