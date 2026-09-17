@@ -47,10 +47,11 @@ Connect the Serial Wombat to the Raspberry Pi Pico as follows:
 | Serial Wombat Pin | Raspberry Pi Pico Physical Pin | Pico GPIO / Function |
 |---|---:|---|
 | GND | Pin 3 | GND |
-| VDD | Pin 4 | GP2 |
+| VDD | Pin 36 (or pin 4 for programming only) Pin 4 | 3V3OUT (or GP2) |
 | SCL | Pin 5 | GP3 |
 | SDA | Pin 6 | GP4 |
 
+Pull up resistors from SCL and SDA to VDD are necessary.  These can be added directly on the Serial Wombat board, or externally. 2.2k ohm is recommended.  
 
 The bridge firmware drives **GP2 high** and uses it as the VDD connection shown above. GP3 is the I2C clock line and GP4 is the I2C data line.
 
@@ -86,3 +87,5 @@ Bit-banged I2C is used so the Pico can initialize even if no I2C device is conne
 ## Power Note
 
 GP2 is a GPIO output, not a dedicated power-supply pin. The current bridge firmware configures GP2 as a high output with the RP2040 12 mA drive-strength setting. Use this connection only when the attached Serial Wombat configuration is appropriate for the available GPIO output current. For higher-current loads, power the Serial Wombat from a suitable external supply and connect the grounds together.
+
+This option is available because it allows easy connection of many Serial Wombat boards with a 4 parallel wires, since many Serial Wombat boards use GND-Vdd-SCL-SDA pin order.  This is convenient for lightweight experimentation of boards, or configuring them to be Serial Wombat Widgets.
